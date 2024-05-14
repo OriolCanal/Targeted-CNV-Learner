@@ -1,0 +1,8 @@
+main_dir: "/home/ocanal/Desktop/CNV_detection_on_targeted_sequencing"
+mongo_restore_file: "mongo_db/mongo"
+docker_yaml_file : "yaml_files/docker_resources.yaml"
+annotations_yaml_file : "yaml_files/annotation_resources_hg38.yaml"
+reference_yaml_file : "yaml_files/reference_resources.yaml"
+mock_vcf : "vcf_files/mock_vcf/RB36565.gatk.vcf"
+isoforms_to_annotate: "isoforms_included_in_db.txt"
+bed_file : "bed/suddxl.v3.147.ROI.analysis.bed"

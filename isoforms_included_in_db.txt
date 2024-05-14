@@ -1,0 +1,3 @@
+# This file will be used to include isoforms that are not canonical, mane select or mane clinical that will be uploaded to the mongodb transcripts ids 
+ENST00000369519
+ENST00000546310

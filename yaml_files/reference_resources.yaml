@@ -1,0 +1,35 @@
+version: 1.0
+ref_dir: /home/ocanal/REF_DIR/
+genomes: 
+  - hg38
+  - hg19
+  - b37
+  - SARS-COV-2
+# ref_dir: /home/bdelolmo/REF_DIR/
+hg38:
+  dirname: "hg38"
+  fasta: hg38.analysisSet.fasta
+  dict: hg38.analysisSet.dict
+  gene_bed: genelist.hg38.bed.gz
+  chrom_sizes: ""
+hg19:
+  #species: homo sapiens
+  dirname: "hg19"
+  fasta: ucsc.hg19.fasta
+  dict: ucsc.hg19.dict
+  gene_bed: genelist.hg19.bed.gz
+  chrom_sizes: hg19.txt 
+  #  file: bed
+b37:
+  #species: homo sapiens
+  dirname: "b37"
+  fasta: human_g1k_v37_decoy.fasta
+  dict: human_g1k_v37_decoy.dict
+  gene_bed: ""
+  chrom_sizes: ""
+SARS-COV-2:
+  #species: SARS-COV-2
+  dirname: "SARS-COV-2"
+  fasta: MN908947.fasta
+  dict: MN908947.dict
+  gene_bed: ""

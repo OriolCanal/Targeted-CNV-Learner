@@ -1,0 +1,323 @@
+version: 1.68
+ann_dir: /home/ocanal/ANN_DIR
+main_yaml_path: /home/ocanal/Desktop/GC_NGS_PIPELINE_15122023
+genome_reference: 19
+
+# ann_dir: /home/bdelolmo/ANN_DIR
+# main_yaml_path: /home/bdelolmo/GC_NGS_PIPELINE
+
+#missense_predictors used with dbNSFP: sift, polyphen2, mutationtaster2, provean, fathmm, revel, mutpred
+missense_predictors:
+- sift
+- polyphen2
+- mutationtaster2
+- provean
+- fathmm
+- revel
+- mutpred
+splicing_predictors:
+- cadd
+- spliceai
+- maxentscan
+- dbscsnv
+genomewide_predictors:
+- cadd
+- nce
+yaml:
+  version: 1.68
+  resurce_name: yaml
+  dirname: yaml
+  file: hg19/annotation_resources_v1.68.yaml
+  last_review: '20220411'
+  md5: 2d55cc751e662471fef7e5b0b2960c93
+gencode_gtf:
+  version: 44
+  resource_name: gencode_gtf
+  dirname: gencode_gtf
+  file: hg19/ #gencode.v44lift37.annotation.sorted.gtf.gz
+  last_review: 20231215
+spliceai_transcript:
+  version: 44
+  resource_name: gencode_gtf
+  dirname: gencode_gtf
+  file: hg19/sorted_spliceAI_gencode44.txt
+  last_review: 20231220
+dbnsfp:
+  version: '4.1'
+  resource_name: dbNSFP
+  dirname: dbNSFP
+  file: hg19/dbNSFP4.1a_grch37.gz
+  last_review: '20230614'
+  md5: 62e7768bd6eba48acd458b46fba6275e
+revel:
+  version: 1.3
+  resource_name: REVEL
+  dirname: REVEL
+  file: hg19/new_tabbed_revel.tsv.gz
+  last_review: 20231215
+vep:
+  version: '105'
+  resource_name: VEP
+  dirname: VEP
+  file: input
+  input: input
+  output: output
+  last_review: '20230614'
+  md5: 5a4822acdc2d8bb704d239025d61bd08
+vep_cache:
+  version: 111
+  resource_name: vep_cache
+  dirname: VEP/homo_sapiens
+  file: VEP/homo_sapiens/111_GRCh37/
+clinvar:
+  version: '20231126'
+  resource_name: ClinVar
+  dirname: clinvar
+  file: hg19/clinvar_20230826.vcf.gz
+  fields:
+  - AF_ESP
+  - AF_EXAC
+  - AF_TGP
+  - ALLELEID
+  - CLNDN
+  - CLNDNINCL
+  - CLNDISDB
+  - CLNDISDBINCL
+  - CLNHGVS
+  - CLNREVSTAT
+  - CLNSIG
+  - CLNSIGCONF
+  - CLNSIGINCL
+  - CLNVC
+  - CLNVCSO
+  - CLNVI
+  - DBVARID
+  - GENEINFO
+  - MC
+  - ORIGIN
+  - RS
+  last_review: '20231201'
+  md5: 9d2dbac5256ae0eb59c14f54fde47860
+gene_synonyms:
+  version: '2'
+  resource_name: gene_synonyms
+  dirname: gene_synonyms
+  file: hg19/gene_synonyms_20230511.gz
+  md5: 439d81c61ea1eb57e796b3f64c94b498
+thousand_genomes:
+  version: '20130502'
+  resource_name: 1000Genomes
+  dirname: 1000Genomes
+  file: hg19/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz
+  fields:
+  - AC
+  - AN
+  - AF
+  - AFR_AF
+  - AMR_AF
+  - EUR_AF
+  - SAS_AF
+  - EAS_AF
+  - OTH_AS
+  md5: 96ff5a850e2fdd3505bb24f473be4039
+gnomad:
+  version: 2.1.1
+  resource_name: gnomAD
+  dirname: gnomAD
+  file: hg19/genomes/gnomad.genomes.r2.1.1.filtered.sites.vcf.gz
+  fields:
+  - AC
+  - AN
+  - AF
+  - rf_tp_probability
+  - AC_afr
+  - AN_afr
+  - AF_afr
+  - AC_amr
+  - AN_amr
+  - AF_amr
+  - AC_eas
+  - AN_eas
+  - AF_eas
+  - AC_nfe
+  - AN_nfe
+  - AF_nfe
+  - AC_fin
+  - AN_fin
+  - AF_fin
+  - AC_asj
+  - AN_asj
+  - AF_asj
+  - AC_oth
+  - AN_oth
+  - AF_oth
+  - popmax
+  - AC_popmax
+  - AN_popmax
+  - AF_popmax
+  - faf95_afr
+  - faf95_amr
+  - faf95_eas
+  - faf95_nfe
+  - faf95
+  last_review: '20230614'
+  md5: b2832b6a08f17c73efcd1c3dbd829664
+gnomad_exomes:
+  version: 2.1.1
+  resource_name: gnomAD_exomes
+  dirname: gnomAD
+  file: hg19/exomes/gnomad.exomes.r2.1.1.filtered.sites.vcf.gz
+  fields:
+  - AC
+  - AN
+  - AF
+  - rf_tp_probability
+  - AC_afr
+  - AN_afr
+  - AF_afr
+  - AC_amr
+  - AN_amr
+  - AF_amr
+  - AC_eas
+  - AN_eas
+  - AF_eas
+  - AC_nfe
+  - AN_nfe
+  - AC_sas
+  - AN_sas
+  - AF_sas
+  - AF_nfe
+  - AC_fin
+  - AN_fin
+  - AF_fin
+  - AC_asj
+  - AN_asj
+  - AF_asj
+  - AC_oth
+  - AN_oth
+  - AF_oth
+  - popmax
+  - AC_popmax
+  - AN_popmax
+  - AF_popmax
+  - faf95_afr
+  - faf95_amr
+  - faf95_eas
+  - faf95_nfe
+  - faf95
+  last_review: '20230614'
+  md5: cf31efdbd8379e74a23696639f99e27e
+gnomad_only_af:
+  version: 2.1.1
+  resource_name: gnomAD
+  dirname: gnomAD
+  file: hg19/genomes/somatic-b37_af-only-gnomad.raw.sites.chr.vcf.gz
+  last_review: '20230614'
+  md5: 616ecb24fa078f385320fcb97c6d4906
+gnomad_sv:
+  version: 2.1.1
+  resource_name: gnomAD_SV
+  dirname: gnomAD
+  file: hg19/sv/gnomad_v2.1_sv.sites.vcf.gz
+  last_review: '20230614'
+  md5: 5660dfed3c9b0daf9e44068ae086a628
+cadd:
+  version: '1.6'
+  resource_name: CADD
+  dirname: CADD
+  file: hg19/1.6/whole_genome_SNVs.tsv.gz
+  last_review: '20230614'
+  md5: b87fa5ea5e39b15bb096c72642d67e20
+spliceai_snv:
+  version: '1.3'
+  resource_name: spliceAI
+  dirname: spliceAI
+  file: hg19/spliceai_scores.raw.snv.hg19.vcf.gz
+  last_review: '20230614'
+  md5: 023e9dddaad7bcc60b8afc9d36998a06
+spliceai_indel:
+  version: '1.3'
+  resource_name: spliceAI
+  dirname: spliceAI
+  file: hg19/spliceai_scores.raw.indel.hg19.vcf.gz
+  last_review: '20230614'
+  md5: abc011ac5d35c39075f926e7a7156cf1
+dbscsnv:
+  version: '1.1'
+  resource_name: dbscsnv
+  dirname: dbscSNV
+  file: hg19/dbscSNV1.1_GRCh37.txt.gz
+  md5: 21889224bfc235a42a6d5c54b9466098
+maxent:
+  version: ''
+  resource_name: MaxEntScan
+  dirname: MaxEntScan
+  file: hg19/
+  md5: 83cc4f8c5253d129b971c3bf21bad996
+tier_catsalut:
+  version: '1.0'
+  resource_name: tier_catsalut
+  dirname: Tiers_cancer
+  file: hg19/Tiers_cancer.v1.tsv
+  md5: 90457eb1597a3103616e91e0af1ba574
+cancer_hotspots:
+  version: '2.0'
+  resource_name: cancer_hotspots
+  dirname: cancer_hotspots
+  file: hg19/hotspots_v2.xls
+  md5: c12cea615260ed24bb8f3bbe7121524a
+civic:
+  version: '20231201'
+  resource_name: CIViC
+  dirname: CIViC
+  file: hg19/20231201/
+  last_review: '20231201'
+  md5: bb901e2f78c78934d4b0de3b46a36cb8
+cgi:
+  version: '1'
+  resource_name: CGI
+  dirname: CGI
+  file: hg19/cgi_biomarkers_latest/cgi_biomarkers_per_variant.tsv
+  md5: b8edcce3f920291acd3b81caed716fe0
+chimerdb:
+  version: '4'
+  resource_name: chimerDB
+  dirname: chimerDB
+  file: hg19/chimerKB_hg19_fusions.bed
+  md5: 9d23c0cb35959cb5c86c3c437556d81d
+blacklist:
+  version: ''
+  resource_name: Blacklist
+  dirname: Blacklist
+  file: hg19/exclude.regions.hg19.bed
+  md5: 658bb127b48de3cde36aa5ce9b46ebe6
+phastcons:
+  version: ''
+  resource_name: phastCons
+  dirname: Conservation
+  file: hg19/hg19.100way.phastCons.bw
+  md5: 8c71ae8562f5ece3f4ab7ffdb93df5b2
+phylop:
+  version: ''
+  resource_name: phyloP
+  dirname: Conservation
+  file: hg19/hg19.100way.phyloP100way.bw
+  md5: 3cd23310337c407d584e844eae777c94
+mappability:
+  version: ''
+  resource_name: mappability
+  dirname: Mappability
+  file: hg19/wgEncodeCrgMapabilityAlign100mer.chr.bedgraph.gz
+  md5: 7c1d322c07582050ee6b6b26097c0a8f
+grapes_db:
+  version: ''
+  resource_name: grapes_db
+  dirname: GRAPES_DB
+  file: hg19/
+  md5: 18792368459e1bc265add8acd73db869
+grapes2_db:
+  version: ''
+  resource_name: grapes2_db
+  dirname: GRAPES2_DB
+  file: hg19/
+  md5:

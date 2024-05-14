@@ -1,0 +1,13 @@
+runs/
+mosdepth_excel.xlsx
+mosdepth_excel.xlsx
+master_thesis_venv/
+venv/
+GATK/
+modules/__pycache__/
+bed/
+bam_with_cnv/
+my_package.log
+*.xlsx
+Plots/
+

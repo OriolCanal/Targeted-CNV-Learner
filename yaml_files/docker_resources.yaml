@@ -1,0 +1,17 @@
+vep:
+  image: ensemblorg/ensembl-vep:release_111.0
+  version: 111
+spliceai:
+  image: skysbiodocker/spliceai
+  version: latest
+picard:
+  image: broadinstitute/picard
+  version: latest
+mosdepth:
+  image: quay.io/biocontainers/mosdepth
+  version: 0.3.3--h37c5b7d_2
+gatk:
+  image: broadinstitute/gatk
+  version: 4.2.2.0
+
+
