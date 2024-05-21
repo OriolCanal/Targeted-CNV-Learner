@@ -49,7 +49,7 @@ for run in time_ordered_runs:
     if run.panel == "SUDD_147":
         run_ids.append(run.run_id)
         logger.info(f"{run.run_id} will be analysed")
-    if len(run_ids) == 7:
+    if len(run_ids) == 16:
         break
 
 logger.info(f"{len(run_ids)} runs will be downloaded")

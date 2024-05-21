@@ -11,5 +11,5 @@ my_package.log
 *.xlsx
 wdl_gatk/
 *.xlsx#
-
+*.pyc
 

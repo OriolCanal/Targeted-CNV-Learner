@@ -305,7 +305,7 @@ class Cohort_Gatk_gCNV(Gatk_gCNV):
             "--interval-merging-rule", "OVERLAPPING_ONLY",
         ]
 
-        cmd.extend(input_read_files, "GATK DetermineGermlineContigPloidy in cohort mode")
+        cmd.extend(input_read_files)
 
         cmd2 = [
             "--contig-ploidy-priors", f"{self.gatk_volume}/{self.contig_ploidy_filename}",
@@ -315,7 +315,7 @@ class Cohort_Gatk_gCNV(Gatk_gCNV):
         ]
 
 
-        cmd.extend(cmd2)
+        cmd.extend(cmd2, "GATK DetermineGermlineContigPloidy in cohort mode")
 
         self.run_cmd(cmd)
 
