@@ -8,7 +8,7 @@ from modules.mongo_classes import Run as Mongo_Run
 from modules.mongo_classes import Sample as Mongo_Sample
 from modules.bed import Bed
 
-from modules.gatk_gCNV import Gatk_gCNV, Case_Gatk_gCNV
+from modules.CNV_detection_algorithms.gatk_gCNV import Gatk_gCNV, Case_Gatk_gCNV, Cohort_Gatk_gCNV
 from modules.params import load_config
 from modules.log import logger
 from modules.picard import Picard, Metrics_Df
@@ -49,7 +49,7 @@ for run in time_ordered_runs:
     if run.panel == "SUDD_147":
         run_ids.append(run.run_id)
         logger.info(f"{run.run_id} will be analysed")
-    if len(run_ids) == 15:
+    if len(run_ids) == 7:
         break
 
 logger.info(f"{len(run_ids)} runs will be downloaded")
@@ -89,34 +89,34 @@ exons_mean_coverage_df.to_excel(mosdepth_excel_path, index=False)
 
 heatmap_path = os.path.join(ref_conf.main_dir, "Mosdepth_heatmap.png")
 Mosdepth_Metrics_Df.apply_pca(normalized=True)
-closes_points = Mosdepth_Metrics_Df.get_n_pca_closest_samples("RB36157", n=5)
+# closes_points = Mosdepth_Metrics_Df.get_n_pca_closest_samples("RB36157", n=5)
 Mosdepth_Metrics_Df.apply_umap(normalized=True)
 Cluster_Pca = Clustering_Mosdepth(Mosdepth_Metrics_Df, "PCA", ref_conf)
-Cluster_Pca.apply_bayesian_gaussian_mixture()
-Cluster_Pca.do_hierarchical_clustering()
+# Cluster_Pca.apply_bayesian_gaussian_mixture()
+# Cluster_Pca.do_hierarchical_clustering()
 Cluster_Pca.apply_hdbscan(min_samples=15, min_cluster_size=5)
 
 Cluster_Umap = Clustering_Mosdepth(Mosdepth_Metrics_Df, "UMAP", ref_conf)
-Cluster_Umap.apply_bayesian_gaussian_mixture()
-Cluster_Umap.do_hierarchical_clustering()
+# Cluster_Umap.apply_bayesian_gaussian_mixture()
+# Cluster_Umap.do_hierarchical_clustering()
 Cluster_Umap.apply_hdbscan(min_samples=15, min_cluster_size=3)
 
 cluster_samples = Cluster_Pca.get_hdbscan_cluster_samples(analysis_samples)
 
-
+# if force_run = True, if output file of gatk exists, the command will run and the file will be overwritten
+force_run = False
 # # Run GATK gCNV
 Picard_Obj.run_bed_to_interval_list(Bed_obj)
-Gatk_obj = Gatk_gCNV(docker_conf, ref_conf, Bed_obj)
-Gatk_obj.run_preprocess_intervals(Bed_obj)
-Gatk_obj.run_index_feature_file(Bed_obj)
-Gatk_obj.run_annotate_intervals(Bed_obj)
-Gatk_obj.run_interval_list_tool(Bed_obj)
+Gatk_obj = Gatk_gCNV(docker_conf, ref_conf, Bed_obj, force_run)
+Gatk_obj.run_preprocess_intervals()
+Gatk_obj.run_index_feature_file()
+Gatk_obj.run_annotate_intervals()
 
 # creating hdf5 file for each sample
 for sample in analysis_samples.values():
 
     Bam = sample.bam
-    Gatk_obj.run_collect_read_counts(Bam, Bed_obj)
+    Gatk_obj.run_collect_read_counts(Bam)
 
 # creating a model for each sample
 for cluster in cluster_samples.keys():
@@ -124,14 +124,20 @@ for cluster in cluster_samples.keys():
         continue
     cohort_samples = cluster_samples[cluster]
     print(cohort_samples)
+    bams = list()
     for sample in cohort_samples:
-        Gatk_obj.run_filter_intervals(Bed_obj, sample, cohort_samples)
-        Sample_Case_Gatk_gCNV = Case_Gatk_gCNV(sample, docker_conf, ref_conf, Bed_obj)
-        Sample_Case_Gatk_gCNV.create_model(Bed_obj, sample, cohort_samples)
-        Sample_Case_Gatk_gCNV.run_determine_germline_contig_ploidy(Bed_obj)
-        Sample_Case_Gatk_gCNV.run_germline_cnv_caller_cohort_mode(Bed_obj, sample, cohort_samples)
-        Sample_Case_Gatk_gCNV.run_germline_cnv_caller_case_mode()
-        Sample_Case_Gatk_gCNV.run_postprocess_germline_calls()
+        Gatk_obj.run_filter_intervals(sample, cohort_samples)
+        Gatk_obj.run_interval_list_tools()
+        Gatk_obj.run_filter_intervals(sample, cohort_samples)
+        Gatk_Cohort = Cohort_Gatk_gCNV(sample, docker_conf, ref_conf, Bed_obj, cohort_samples, force_run)
+        Sample_Case_Gatk_gCNV = Case_Gatk_gCNV(sample, docker_conf, ref_conf, Bed_obj, force_run)
+        Gatk_Cohort.run_determine_germline_contig_ploidy(sample)
+        Sample_Case_Gatk_gCNV.run_determine_germline_contig_ploidy(Gatk_Cohort)
+        Gatk_Cohort.run_germline_cnv_caller(sample)
+        Sample_Case_Gatk_gCNV.run_germline_cnv_caller(Gatk_Cohort)
+        Sample_Case_Gatk_gCNV.run_postprocess_germline_calls(Gatk_Cohort)
+        bams.append(sample.bam.path)
+    print(f"bams of cluster {cluster}:\n {bams}")
 
 # should create a 
 # Gatk_obj.run_determine_germline_contig_ploidy(Bed_obj)

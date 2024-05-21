@@ -13,6 +13,8 @@ class Picard():
 
     def create_fasta_dict(self):
         self.ref_dict_file = self.ref_fasta_file.replace("fasta", "dict")
+        if os.path.exists(os.path.join(self.reference_dir, self.ref_dict_file)):
+            logger.info(f"dict file already exists: {self.ref_dict_file} in {self.reference_dir}")
         picard_cmd = [
             "docker", "run",
             "-v", f"{self.reference_dir}:/ref_dir",
