@@ -7,12 +7,12 @@ from modules.CNV_detection_algorithms.CNV_algorithm import CNV_Algorithm
 
 class Decon(CNV_Algorithm):
 
-    def __init__(self, docker_conf, reference_conf, Bed, control_samples, force_run=False):
+    def __init__(self, docker_conf, reference_conf, Bed, Run_class, force_run=False):
         super().__init__(docker_conf, reference_conf, Bed, force_run)
         self.decon_image = docker_conf.decon["image"]
         self.decon_version = docker_conf.decon["version"]
 
-        self.control_samples = control_samples
+        self.Run = Run_class
         self.decon_folder = os.path.join(self.main_dir, "DECON")
         if not os.path.exists(self.decon_folder):
             os.mkdir(self.decon_folder)
@@ -28,7 +28,7 @@ class Decon(CNV_Algorithm):
     
     def get_input_file(self):
         with open(self.input_path, "w") as f:
-            for sample in self.control_samples:
+            for sample in self.Run.samples_147:
                 sample_path = os.path.join(
                     "/bam_vol",
                     sample.run_id,

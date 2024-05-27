@@ -6,8 +6,8 @@ class Bam():
         self.filename = os.path.basename(self.path)
         self.dir = os.path.dirname(self.path)
 
-        self.bai_path = self.path.replace("bam", "bai")
-        self.bai_filename = self.filename.replace("bam", "bai")
+        self.bai_path = f"{self.path}.bai"
+        self.bai_filename = os.path.basename(self.bai_path)
         self.validate_bam_bai()
         self.volume = "/bam_dir"
         self.gatk_dirname = "GATK_gCNV"

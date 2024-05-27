@@ -5,4 +5,5 @@ annotations_yaml_file : "yaml_files/annotation_resources_hg38.yaml"
 reference_yaml_file : "yaml_files/reference_resources.yaml"
 mock_vcf : "vcf_files/mock_vcf/RB36565.gatk.vcf"
 isoforms_to_annotate: "isoforms_included_in_db.txt"
+bam_dir: "bams_147" # directory where bams and bais are stored
 bed_file : "bed/suddxl.v3.147.ROI.analysis.bed"

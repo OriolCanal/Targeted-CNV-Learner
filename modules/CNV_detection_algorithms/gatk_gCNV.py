@@ -70,11 +70,10 @@ class Gatk_gCNV(CNV_Algorithm):
         return(self.gatk_read_counts_folder)
     
     
-    def run_collect_read_counts(self, Bam):
+    def run_collect_read_counts(self, Sample):
         """
         Run GATK CollectReadCounts.
         """
-
         self.create_gatk_read_counts_folder()
 
         if not self.Bed.preprocessed_intervals_path:
@@ -87,15 +86,15 @@ class Gatk_gCNV(CNV_Algorithm):
         fasta_filename = os.path.basename(self.reference_fasta)
 
 
-        hdf5_filename = f"{Bam.filename}.hdf5"
+        hdf5_filename = f"{Sample.bam.filename}.hdf5"
         hdf5_path = os.path.join(self.gatk_read_counts_folder, hdf5_filename)
         
         if os.path.exists(hdf5_path) and not self.force_run:
             logger.info(
                 f"GATK CollectReadCounts won't be executed as {hdf5_path} file already exists."
             )
-            Bam.set_hdf5_path_and_filename(hdf5_path)
-            return(Bam.hdf5_path)
+            Sample.bam.set_hdf5_path_and_filename(hdf5_path)
+            return(Sample.bam.hdf5_path)
 
         fasta_volume = "/fasta_dir"
 
@@ -104,21 +103,21 @@ class Gatk_gCNV(CNV_Algorithm):
             "-v", f"{self.gatk_read_counts_folder}:/read_counts",
             "-v", f"{fasta_dir}:{fasta_volume}",
             "-v", f"{self.Bed.dir}:{self.Bed.volume}",
-            "-v", f"{Bam.dir}:{Bam.volume}",
+            "-v", f"{Sample.bam.dir}:{Sample.bam.volume}",
             f"{self.gatk_image}:{self.gatk_version}",
             "gatk", "CollectReadCounts",
             "-L", f"{self.Bed.volume}/{self.Bed.preprocessed_intervals_filename}",
             "-R", f"{fasta_volume}/{fasta_filename}",
             "-imr", "OVERLAPPING_ONLY",
-            "-I", f"{Bam.volume}/{Bam.filename}",
+            "-I", f"{Sample.bam.volume}/{Sample.bam.filename}",
             "--format", "HDF5",
             "-O", f"/read_counts/{hdf5_filename}"
         ]
 
         self.run_cmd(cmd, "GATK CollectReadCounts")
 
-        Bam.set_hdf5_path_and_filename(hdf5_path)
-        return(Bam.hdf5_path)
+        Sample.bam.set_hdf5_path_and_filename(hdf5_path)
+        return(Sample.bam.hdf5_path)
     
     def run_index_feature_file(self):
         """
@@ -190,11 +189,13 @@ class Gatk_gCNV(CNV_Algorithm):
 
         return(gc_annotated_bed_path)
     
-    def get_input_read_count_files(self, analysed_sample_id, cohort_samples):
+    def get_input_read_count_files(self, cohort_samples):
         """
         Get a list of input read counts files found in runs/GATK-gCNV7 to be given to gatk docker.
         E.g. ["-I", "gatk_vol/RB35645.hdf5", "-I", "gatk_vol/RB34532.hdf5]"""
-        sample_hdf5_counts_filenames = [f"{sample.sample_id}.bam.hdf5" for sample in cohort_samples if sample.sample_id != analysed_sample_id]
+
+
+        sample_hdf5_counts_filenames = [sample.bam.hdf5_filename for sample in cohort_samples]
         read_counts_input = list()
         for sample_hdf5_filename in sample_hdf5_counts_filenames:
 
@@ -203,7 +204,7 @@ class Gatk_gCNV(CNV_Algorithm):
         
         return(read_counts_input)
     
-    def run_filter_intervals(self, Sample, cohort_samples):
+    def run_filter_intervals(self, cohort_samples):
         """
         Given specific intervals (annotated intervals), and counts output by CollectReadCoutns,
         outputs a filtered Picard interval list
@@ -231,7 +232,7 @@ class Gatk_gCNV(CNV_Algorithm):
             "--annotated-intervals", f"{self.Bed.volume}/{self.Bed.annotated_intevals_filename}",
         ]
 
-        read_counts_cmd = self.get_input_read_count_files(Sample.sample_id, cohort_samples)
+        read_counts_cmd = self.get_input_read_count_files(cohort_samples)
         
         cmd.extend(read_counts_cmd)
 
@@ -264,35 +265,34 @@ class Gatk_gCNV(CNV_Algorithm):
     def get_scatters(self):
         scatter_dirnames = os.listdir(self.scatter_path)
         scatter_paths = [os.path.join(self.scatter_path, scatter_dirname, "scattered.interval_list") for scatter_dirname in scatter_dirnames]
-        return scatter_paths
+        return sorted(scatter_paths)
 
 
 class Cohort_Gatk_gCNV(Gatk_gCNV):
-    def __init__(self, sample, docker_conf, reference_conf, Bed, cohort_samples, force_run=False):
-        self.sample = sample
+    def __init__(self, docker_conf, reference_conf, Bed, cohort_samples, force_run=False):
         # Initialize attributes that belong to the parent class
         super().__init__(docker_conf, reference_conf, Bed, force_run)
         self.ploidy_prefix = "ploidy"
-        self.model_dir = os.path.join(self.gatk_folder, self.sample.sample_id)
+        self.model_dir = os.path.join(self.gatk_folder, "cohort")
         self.cohort_cnv_caller_filename = "cohort_caller"
         self.cohort_samples = cohort_samples
 
     
-    def run_determine_germline_contig_ploidy(self, Sample):
+    def run_determine_germline_contig_ploidy(self):
 
 
         if not os.path.exists(self.model_dir):
             os.mkdir(self.model_dir)
 
-        output = os.path.join(self.model_dir, f"{self.ploidy_prefix}-model")
-        if os.path.exists(output) and not self.force_run:
+        self.ploidy_model = os.path.join(self.model_dir, f"{self.ploidy_prefix}-model")
+        if os.path.exists(self.ploidy_model) and not self.force_run:
             logger.info(
-                f"DetermineGermlineContigPloidy already run in cohort mode for sample {self.sample.sample_id}"
+                f"DetermineGermlineContigPloidy already run in cohort mode for cohort samples"
             )
             return(True)
         
         
-        input_read_files = self.get_input_read_count_files(Sample.sample_id, self.cohort_samples)
+        input_read_files = self.get_input_read_count_files(self.cohort_samples)
         cmd = [
             self.docker_path, "run",
             "-v", f"{self.model_dir}:/model_dir", 
@@ -315,23 +315,25 @@ class Cohort_Gatk_gCNV(Gatk_gCNV):
         ]
 
 
-        cmd.extend(cmd2, "GATK DetermineGermlineContigPloidy in cohort mode")
+        cmd.extend(cmd2)
 
-        self.run_cmd(cmd)
+        self.run_cmd(cmd, "GATK DetermineGermlineContigPloidy in cohort mode")
 
 
 
-    def run_germline_cnv_caller(self, Sample):
+    def run_germline_cnv_caller(self):
 
-        if not hasattr(self, "model_dir"):
-            self.model_dir = os.path.join(self.gatk_folder, self.sample.sample_id)
-        
-        if os.path.exists(os.path.join(self.model_dir, f"{self.cohort_cnv_caller_filename}-model")) and not self.force_run:
-            return True
+        self.model = list()
+
         
         scatter_files = self.get_scatters()
 
         for i, scatter in enumerate(scatter_files):
+            self.model.append(os.path.join(self.model_dir, f"{i}_{self.cohort_cnv_caller_filename}-model"))
+            if os.path.exists(os.path.join(self.model_dir, f"{i}_{self.cohort_cnv_caller_filename}-model")) and not self.force_run:
+                logger.info(
+                    f"GATK GermlineCNVCaller already run in cohort mode: {self.model[i]}")
+                continue
             scatter_dir = os.path.dirname(scatter)
             scatter_filename = os.path.basename(scatter)
             cmd = [
@@ -345,7 +347,7 @@ class Cohort_Gatk_gCNV(Gatk_gCNV):
                 "--run-mode", "COHORT",
                 "-L", f"/scatter_dir/{scatter_filename}"
             ]
-            input_read_files = self.get_input_read_count_files(Sample.sample_id, self.cohort_samples)
+            input_read_files = self.get_input_read_count_files(self.cohort_samples)
             cmd.extend(input_read_files)
             cmd2 = [
                 "--contig-ploidy-calls", f"/model_dir/{self.ploidy_prefix}-calls",
@@ -361,17 +363,19 @@ class Cohort_Gatk_gCNV(Gatk_gCNV):
             self.run_cmd(cmd, "GATK GermlineCNVCaller in cohort mode")
 
 class Case_Gatk_gCNV(Gatk_gCNV):
-    def __init__(self, sample, docker_conf, reference_conf, Bed, force_run=False):
+    def __init__(self, Cohort_gatk_gCNV, sample, docker_conf, reference_conf, Bed, force_run=False):
         self.sample = sample
         # Initialize attributes that belong to the parent class
+
         super().__init__(docker_conf, reference_conf, Bed, force_run)
+        self.Cohort_Gatk = Cohort_gatk_gCNV
         self.ploidy_case_prefix = "ploidy-case"
         self.model_dir = os.path.join(self.gatk_folder, self.sample.sample_id)
         self.caller_prefix = f"{self.sample.sample_id}_vs_cluster_cohort"
 
 
     
-    def run_determine_germline_contig_ploidy(self, Cohort_Gatk_gCNV):
+    def run_determine_germline_contig_ploidy(self):
 
         if not os.path.exists(self.model_dir):
             os.mkdir(self.model_dir)
@@ -386,11 +390,12 @@ class Case_Gatk_gCNV(Gatk_gCNV):
             self.docker_path, "run",
             "-v", f"{self.gatk_folder}:{self.gatk_volume}",
             "-v", f"{self.model_dir}:/model_dir",
+            "-v", f"{self.Cohort_Gatk.model_dir}:/cohort_model_dir",
             "-v", f"{self.gatk_read_counts_folder}:{self.read_counts_volume}",
             f"{self.gatk_image}:{self.gatk_version}",
             "gatk", "DetermineGermlineContigPloidy",
-            "--model", f"/model_dir/{Cohort_Gatk_gCNV.ploidy_prefix}-model",
-            "-I", f"{self.read_counts_volume}/{self.sample.sample_id}.bam.hdf5",
+            "--model", f"/cohort_model_dir/{self.Cohort_Gatk.ploidy_prefix}-model",
+            "-I", f"{self.read_counts_volume}/{self.sample.bam.hdf5_filename}",
             "-O", "/model_dir",
             "--output-prefix", self.ploidy_case_prefix,
             "--verbosity", "DEBUG"
@@ -399,7 +404,7 @@ class Case_Gatk_gCNV(Gatk_gCNV):
         self.run_cmd(cmd, "GATK DetermineGermlineContigPloidy in case mode")
 
 
-    def run_germline_cnv_caller(self, Cohort_obj):
+    def run_germline_cnv_caller(self):
         if not hasattr(self, "model_dir"):
             self.model_dir = os.path.join(self.gatk_folder, self.sample.sample_id)
         
@@ -412,20 +417,21 @@ class Case_Gatk_gCNV(Gatk_gCNV):
             cmd = [
                 self.docker_path, "run",
                 "-v", f"{self.model_dir}:/model_dir",
+                "-v", f"{self.Cohort_Gatk.model_dir}:/cohort_model_dir",
                 "-v", f"{self.gatk_read_counts_folder}:{self.read_counts_volume}",
                 f"{self.gatk_image}:{self.gatk_version}",
                 "gatk", "GermlineCNVCaller",
                 "--run-mode", "CASE",
-                "-I", f"{self.read_counts_volume}/{self.sample.sample_id}.bam.hdf5",
+                "-I", f"{self.read_counts_volume}/{self.sample.bam.hdf5_filename}",
                 "--contig-ploidy-calls", f"/model_dir/{self.ploidy_case_prefix}-calls",
-                "--model", f"/model_dir/{i}_{Cohort_obj.cohort_cnv_caller_filename}-model",
+                "--model", f"/cohort_model_dir/{i}_{self.Cohort_Gatk.cohort_cnv_caller_filename}-model",
                 "--output", f"/model_dir/",
                 "--output-prefix", f"{i}_{self.caller_prefix}",
                 "--verbosity", "DEBUG"
             ]
             self.run_cmd(cmd, "GATK GermlineCNVCaller in case mode")
 
-    def run_postprocess_germline_calls(self, cohort_obj):
+    def run_postprocess_germline_calls(self):
         fasta_dir = os.path.dirname(self.reference_fasta)
         # sample index should be an integer
         sample_int = self.sample.sample_id.replace("RB", "")
@@ -437,6 +443,7 @@ class Case_Gatk_gCNV(Gatk_gCNV):
         cmd = [
             self.docker_path, "run",
             "-v", f"{self.model_dir}:/model_dir",
+            "-v", f"{self.Cohort_Gatk.model_dir}:/cohort_model_dir",
             "-v", f"{self.gatk_results_dir}:/results_dir",
             "-v", f"{fasta_dir}:/ref_dir",
             f"{self.gatk_image}:{self.gatk_version}",
@@ -448,7 +455,7 @@ class Case_Gatk_gCNV(Gatk_gCNV):
             scatter_dir = os.path.dirname(scatter)
             scatter_filename = os.path.basename(scatter)
             model_shard.extend([
-                "--model-shard-path", f"/model_dir/{i}_{cohort_obj.cohort_cnv_caller_filename}-model"
+                "--model-shard-path", f"/cohort_model_dir/{i}_{self.Cohort_Gatk.cohort_cnv_caller_filename}-model"
 
             ])
             calls_shard.extend([
@@ -465,8 +472,8 @@ class Case_Gatk_gCNV(Gatk_gCNV):
             "--allosomal-contig", "chrY",
             "--contig-ploidy-calls", f"/model_dir/{self.ploidy_case_prefix}-calls",
             "--sample-index", "0", # in case mode is allways 0
-            "--output-genotyped-intervals", f"/results_dir/{self.sample.sample_id}_intervals_cluster{self.sample.cluster}.vcf.gz",
-            "--output-genotyped-segments", f"/results_dir/{self.sample.sample_id}_segments_cluster{self.sample.cluster}.vcf.gz",
+            "--output-genotyped-intervals", f"/results_dir/{self.sample.sample_id}_intervals_cluster.vcf.gz",
+            "--output-genotyped-segments", f"/results_dir/{self.sample.sample_id}_segments_cluster.vcf.gz",
             "--output-denoised-copy-ratios", f"/results_dir/{self.sample.sample_id}_denoised_copy_rations.hdf5",
             "--sequence-dictionary", f"/ref_dir/{self.dict_filename}"
         ]

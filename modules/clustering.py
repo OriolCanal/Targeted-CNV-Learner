@@ -10,6 +10,10 @@ from matplotlib.patches import Ellipse
 from scipy.cluster.hierarchy import fcluster, dendrogram, linkage
 from sklearn.metrics import silhouette_score
 import hdbscan
+from sklearn.cluster import DBSCAN
+from sklearn.neighbors import NearestNeighbors
+
+
 
 
 class Clustering_Mosdepth():
@@ -215,13 +219,61 @@ class Clustering_Mosdepth():
         plt.legend(title='Cluster')
         plt.savefig(hdbscan_path)
 
-    def get_hdbscan_cluster_samples(self, analysis_samples):
+    def apply_dbscan(self, epsilon, min_pts, k_graph=False):
+
+
+        dbscan_dir = os.path.join(self.plot_dir, "DBSCAN")
+        if not os.path.exists(dbscan_dir):
+            os.mkdir(dbscan_dir)
+
+        dbscan_path = os.path.join(dbscan_dir, f"HDBSCAN_{min_pts}.minsamples_{epsilon}.epsilon.png")
+
+        # Plot clusters using best parameters
+        clusterer = DBSCAN(eps=epsilon, min_samples=min_pts)
+        cluster_labels = clusterer.fit_predict(self.data)
+        print(f"dbscan labels: {cluster_labels}")
+        print(type(cluster_labels))
+        self.dbscan_tag = f"{self.reduced_dimensional_method}_DBSCAN_labels"
+        self.df[self.dbscan_tag] = cluster_labels
+        plt.figure(figsize=(8, 6))
+        sns.scatterplot(x=self.data[:, 0], y=self.data[:, 1], hue=cluster_labels, palette='viridis')
+        plt.title('DBSCAN Clustering')
+        plt.xlabel('PC1')
+        plt.ylabel('PC2')
+        plt.legend(title='Cluster')
+        plt.savefig(dbscan_path)
+
+
+        if not k_graph:
+            return(cluster_labels)        
+        
+        # Step to create k-distance graph
+        k_distance_path = os.path.join(dbscan_dir, f"k_distance_{min_pts}.png")
+        k = min_pts
+        neighbors = NearestNeighbors(n_neighbors=k)
+        neighbors_fit = neighbors.fit(self.data)
+        distances, indices = neighbors_fit.kneighbors(self.data)
+        
+        # Sort the distances to the k-th nearest neighbor
+        k_distances = np.sort(distances[:, k-1], axis=0)
+        
+        # Plot the k-distance graph
+        plt.figure(figsize=(8, 6))
+        plt.plot(k_distances)
+        plt.title('k-Distance Graph')
+        plt.xlabel('Points sorted by distance')
+        plt.ylabel(f'{k}-th Nearest Neighbor Distance')
+        plt.savefig(k_distance_path)
+
+        return(cluster_labels)
+
+    def set_hdbscan_cluster_samples(self, cohort_samples):
         cluster_samples = dict()
         for index, row in self.df.iterrows():
             cluster_id = row[self.hdbscan_tag]
             id = row["sample_id"]
 
-            sample = analysis_samples[id]
+            sample = cohort_samples[id]
 
             sample.cluster = cluster_id
 
@@ -231,6 +283,25 @@ class Clustering_Mosdepth():
                 cluster_samples[cluster_id].append(sample)
         
         return cluster_samples
+    
+    def set_dbscan_cluster_samples(self, cohort_samples):
+
+        cluster_samples = dict()
+        for index, row in self.df.iterrows():
+            cluster_id = row[self.dbscan_tag]
+            id = row["sample_id"]
+
+            sample = cohort_samples[id]
+
+            sample.cluster = cluster_id
+
+            if cluster_id not in cluster_samples:
+                cluster_samples[cluster_id] = [sample]
+            else:
+                cluster_samples[cluster_id].append(sample)
+        
+        return cluster_samples
+    
 
 
 

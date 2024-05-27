@@ -29,6 +29,7 @@ class YamlConfig:
         self.annotations_yaml = os.path.join(self.main_dir, config_yaml["annotations_yaml_file"])
         self.isoform_path = os.path.join(self.main_dir, config_yaml["isoforms_to_annotate"])
         self.toy_vcf = os.path.join(self.main_dir, config_yaml["mock_vcf"])
+        self.bam_dir = os.path.join(self.main_dir, config_yaml["bam_dir"])
         self.bed = os.path.join(self.main_dir, config_yaml["bed_file"])
     def yaml_to_dict(self, yaml_file) -> str:
         """

@@ -27,6 +27,10 @@ class Mosdepth():
         self.docker_path = "/usr/bin/docker"
         self.bed = docker_conf.bed
         self.bed_dir = os.path.dirname(self.bed)
+        self.mosdepth_dirname = "Mosdepth"
+        self.mosdepth_dir = os.path.join(docker_conf.bam_dir, self.mosdepth_dirname)
+        if not os.path.exists(self.mosdepth_dir):
+            os.mkdir(self.mosdepth_dir)
         self.bed_filename = os.path.basename(self.bed)
         self.mosdepth_image = docker_conf.mosdepth["image"]
         self.mosdepth_version = docker_conf.mosdepth["version"]
@@ -39,24 +43,20 @@ class Mosdepth():
         sample_name = bam_filename.replace(".bam", "")
         bam_dir = os.path.dirname(bam_file)
 
-        mosdepth_dirname = "Mosdepth"
-        mosdepth_dir =  os.path.join(os.path.dirname(bam_file), mosdepth_dirname)
-        
+
         self.bed_regions_filename = f"{sample_name}.regions.bed.gz"
-        self.bed_regions_path = os.path.join(mosdepth_dir, sample_name, self.bed_regions_filename)
+        self.bed_regions_path = os.path.join(self.mosdepth_dir, sample_name, self.bed_regions_filename)
         self.bed_with_thresholds_filename = f"{sample_name}.thresholds.bed.gz"
-        self.bed_with_thresholds_path = os.path.join(mosdepth_dir, sample_name, self.bed_with_thresholds_filename)
+        self.bed_with_thresholds_path = os.path.join(self.mosdepth_dir, sample_name, self.bed_with_thresholds_filename)
         if force == False:
             # check if output already available
             if os.path.exists(self.bed_regions_path):
                 logger.info(f"Mosdepth output already available: {self.bed_regions_path}")
                 return (self.bed_regions_path, sample_name)
 
-        if not os.path.isdir(mosdepth_dir):
-            os.mkdir(mosdepth_dir)
         
         # creating sample directory
-        sample_dir = os.path.join(mosdepth_dir, sample_name)
+        sample_dir = os.path.join(self.mosdepth_dir, sample_name)
         if not os.path.isdir(sample_dir):
             os.mkdir(sample_dir)
 
@@ -69,6 +69,7 @@ class Mosdepth():
         mosdepth_cmd = [
             self.docker_path, "run",
             "-v", f"{self.bed_dir}:/bed_dir",
+            "-v", f"{self.mosdepth_dir}:/ouptut_dir"
             "-v", f"{bam_dir}:/bam_dir",
             f"{self.mosdepth_image}:{self.mosdepth_version}",
             "mosdepth", 
@@ -76,7 +77,7 @@ class Mosdepth():
             "--fast-mode",
             "-n", # don't do per base depth (improve speed)
             "--by", f"/bed_dir/{self.bed_filename}",
-            f"/bam_dir/{mosdepth_dirname}/{sample_name}/{sample_name}",
+            f"/output_dir/{sample_name}/{sample_name}",
             f"/bam_dir/{bam_filename}"
         ]
 
@@ -138,7 +139,7 @@ class Mosdepth():
         
         return(exon_coverage)
 
-    def parse_mosdepth_regions_bed(self, run_id):
+    def parse_mosdepth_regions_bed(self):
         self.bed_regions_path
 
         if not hasattr(self, "bed_regions_path"):
@@ -190,7 +191,7 @@ class Mosdepth():
         self.sample_mean_coverage = sample_coverage / sample_length
         self.mean_exon_coverage["mean_coverage"] = self.sample_mean_coverage
         self.mean_exon_coverage["sample"] = sample_name
-        self.mean_exon_coverage["run_id"] = run_id
+        # self.mean_exon_coverage["run_id"] = run_id
         # print(self.mean_exon_coverage)
         return(self.mean_exon_coverage, self.sample_mean_coverage)
 
@@ -200,6 +201,7 @@ class Mosdepth_df():
         self.exon_coverage_df = pd.DataFrame()
         self.exons_mean_coverage_dicts = list()
         self.normalized_exons_mean_coverage_dicts = list()
+        self.analysis_normalized_exons_mean_coverage_dicts = list()
         self.main_dir = ref_conf.main_dir
         self.plot_dir = os.path.join(self.main_dir, "Plots")
         if not os.path.exists(self.plot_dir):
@@ -208,17 +210,19 @@ class Mosdepth_df():
     def add_mean_coverage_dict(self, mean_coverage_dict):
         self.exons_mean_coverage_dicts.append(mean_coverage_dict)
     
-    def add_normalized_mean_coverage_dict(self, mean_coverage_dict, sample_mean_coverage):
+    def add_normalized_mean_coverage_dict(self, mean_coverage_dict, sample_mean_coverage, sample_type="cohort"):
         
-        not_normalized_cols = ["sample", "run_id"]
+        not_normalized_cols = ["sample"]
         for key in mean_coverage_dict:
             if key in not_normalized_cols:
                 continue
             mean_coverage_dict[key] /= float(sample_mean_coverage)
 
-        
-        self.normalized_exons_mean_coverage_dicts.append(mean_coverage_dict)
-
+        if sample_type == "cohort":
+            self.normalized_exons_mean_coverage_dicts.append(mean_coverage_dict)
+        else:
+            self.analysis_normalized_exons_mean_coverage_dicts.append(mean_coverage_dict, sample_mean_coverage)
+    
     def get_df_from_exons_coverage(self):
         self.exon_coverage_df = pd.DataFrame(self.exons_mean_coverage_dicts)
 
@@ -228,28 +232,33 @@ class Mosdepth_df():
         self.normalized_exon_coverage_df = pd.DataFrame(self.normalized_exons_mean_coverage_dicts)
 
         return(self.normalized_exon_coverage_df)
-    
+
+
+class Cohort_Mosdepth_df(Mosdepth_df):
+    def __init__(self, ref_conf):
+        super().__init__(ref_conf)
+
     def apply_pca(self, normalized=True):
         self.pca_plot_dir = os.path.join(self.plot_dir, "PCA")
         if not os.path.exists(self.pca_plot_dir):
             os.mkdir(self.pca_plot_dir)
         if normalized:
             df_copy = self.normalized_exon_coverage_df.copy()
-            pca_plot_path = os.path.join(self.pca_plot_dir, "normalized_pca.html")
+            pca_plot_path = os.path.join(self.pca_plot_dir, "cohort_normalized_pca.html")
         else:
-            pca_plot_path = os.path.join(self.pca_plot_dir, "non_normalized_PCA.html")
+            pca_plot_path = os.path.join(self.pca_plot_dir, "cohort_non_normalized_PCA.html")
             df_copy = self.exon_coverage_df.copy()
 
-        run_id = df_copy.pop("run_id").tolist()
+        # run_id = df_copy.pop("run_id").tolist()
         sample_id = df_copy.pop("sample").tolist()
-        scaler = StandardScaler()
-        scaled_data = scaler.fit_transform(df_copy)
+        self.scaler = StandardScaler()
+        scaled_data = self.scaler.fit_transform(df_copy)
 
         self.pca = PCA(n_components=2)
         pca_result = self.pca.fit_transform(scaled_data)
         self.pca_df = pd.DataFrame(data=pca_result, columns=["PC1", "PC2"])
         
-        self.pca_df["run_id"] = run_id
+        # self.pca_df["run_id"] = run_id
         self.pca_df["sample_id"] = sample_id
         logger.info(f"Creating PCA plot stored in: {pca_plot_path}")
         # Visualize the PCA result
@@ -257,7 +266,7 @@ class Mosdepth_df():
         custom_palette = px.colors.qualitative.Vivid
 
         # Create an interactive scatter plot with color based on run_id and hover information showing sample_id
-        fig = px.scatter(self.pca_df, x='PC1', y='PC2', color='run_id', hover_data=['sample_id'], title='PCA Result', color_discrete_sequence=custom_palette)
+        fig = px.scatter(self.pca_df, x='PC1', y='PC2', hover_data=['sample_id'], title='PCA Result', color_discrete_sequence=custom_palette)
 
         # Update layout to show grid
         fig.update_layout(
@@ -272,6 +281,124 @@ class Mosdepth_df():
         # Print explained variance ratio
         logger.info(f"Explained Variance Ratio: {self.pca.explained_variance_ratio_}")
 
+class Analysis_Mosdepth_df(Mosdepth_df):
+
+    def __init__(self, ref_conf, scaler, pca):
+        super().__init__(ref_conf)
+        self.scaler = scaler # scaler applied in cohort
+        self.pca = pca # pca transformation applied in cohort
+
+
+
+    def transform_to_pca_space(self, normalized=True):
+        self.pca_plot_dir = os.path.join(self.plot_dir, "PCA")
+        if not os.path.exists(self.pca_plot_dir):
+            os.mkdir(self.pca_plot_dir)
+        if normalized:
+            df_copy = self.normalized_exon_coverage_df.copy()
+            pca_plot_path = os.path.join(self.pca_plot_dir, "analysis_normalized_pca.html")
+        else:
+            pca_plot_path = os.path.join(self.pca_plot_dir, "analysis_non_normalized_PCA.html")
+            df_copy = self.exon_coverage_df.copy()
+
+        sample_id = df_copy.pop("sample").tolist()
+        scaled_data = self.scaler.transform(df_copy)   
+        pca_result = self.pca.transform(scaled_data)
+        self.pca_df = pd.DataFrame(data=pca_result, columns=["PC1", "PC2"])
+        
+        # self.pca_df["run_id"] = run_id
+        self.pca_df["sample_id"] = sample_id
+
+        logger.info(f"Creating PCA plot stored in: {pca_plot_path}")
+        # Visualize the PCA result
+        
+        custom_palette = px.colors.qualitative.Vivid
+
+        # Create an interactive scatter plot with color based on run_id and hover information showing sample_id
+        fig = px.scatter(self.pca_df, x='PC1', y='PC2', hover_data=['sample_id'], title='PCA Result', color_discrete_sequence=custom_palette)
+
+        # Update layout to show grid
+        fig.update_layout(
+            xaxis=dict(title='Principal Component 1'),
+            yaxis=dict(title='Principal Component 2'),
+            hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
+            hovermode='closest',
+        )
+        fig.write_html(pca_plot_path)
+
+
+class Joined_Mosdepth_Df(Mosdepth_df):
+    def __init__(self, ref_conf, cohort_df, analysis_df):
+        super().__init__(ref_conf)
+        self.cohort_df = cohort_df
+        self.analysis_df = analysis_df
+        self.join_dfs()
+
+    def join_dfs(self):
+        self.cohort_df["sample_type"] = "cohort"
+        self.analysis_df["sample_type"] = "analysis"
+        self.joined_df = pd.concat([self.cohort_df, self.analysis_df], axis=0)
+        self.pca_plot_dir = os.path.join(self.plot_dir, "PCA")
+        if not os.path.exists(self.pca_plot_dir):
+            os.mkdir(self.pca_plot_dir)
+        pca_plot_path = os.path.join(self.pca_plot_dir, "cohort_analysis_normalized_pca.html")
+
+        logger.info(f"Creating PCA plot of combined cohort and analysis samples in: {pca_plot_path}")
+        # Visualize the PCA result
+        
+        custom_palette = px.colors.qualitative.Vivid
+
+        # Create an interactive scatter plot with color based on run_id and hover information showing sample_id
+        fig = px.scatter(self.joined_df, x='PC1', y='PC2', color="sample_type", hover_data=['sample_id'], title='PCA Result', color_discrete_sequence=custom_palette)
+
+        # Update layout to show grid
+        fig.update_layout(
+            xaxis=dict(title='Principal Component 1'),
+            yaxis=dict(title='Principal Component 2'),
+            hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
+            hovermode='closest',
+        )
+        fig.write_html(pca_plot_path)
+    
+    def detect_outliers(self, z_score_threshold):
+        self.joined_df['PC1_zscore'] = (self.joined_df['PC1'] - self.joined_df['PC1'].mean()) / self.joined_df['PC1'].std()
+        self.joined_df['PC2_zscore'] = (self.joined_df['PC2'] - self.joined_df['PC2'].mean()) / self.joined_df['PC2'].std()
+        self.outliers = self.joined_df[(np.abs(self.joined_df['PC1_zscore']) > z_score_threshold) | (np.abs(self.joined_df['PC2_zscore']) > z_score_threshold)]
+        
+        pca_plot_path = os.path.join(self.pca_plot_dir, "outliers_pca.html")
+    
+        # Create an interactive scatter plot
+        fig = px.scatter(self.joined_df, x='PC1', y='PC2', hover_data=['sample_id'], title='PCA Result')
+
+        # Add markers for outliers
+        fig.add_trace(px.scatter(self.outliers, x='PC1', y='PC2', hover_data=['sample_id'], color_discrete_sequence=['red']).data[0])
+
+        # Update layout
+        fig.update_layout(
+            xaxis=dict(title='Principal Component 1'),
+            yaxis=dict(title='Principal Component 2'),
+            hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
+            hovermode='closest',
+        )
+
+        # Save or display the plot
+        fig.write_html(pca_plot_path)
+
+    def assign_sample_outliers(self, analysis_sample_id_sample_obj, cohort_sample_id_sample_obj):
+        logger.info(f"outliers detected:\n {self.outliers}")
+        for index, row in self.outliers.iterrows():
+            sample_id = row["sample_id"]
+
+            if sample_id in analysis_sample_id_sample_obj:
+                sample_obj = analysis_sample_id_sample_obj[sample_id]
+                sample_obj.is_outlier = True
+            elif sample_id in cohort_sample_id_sample_obj:
+                sample_obj = cohort_sample_id_sample_obj[sample_id]
+                sample_obj.is_outlier = True
+            else:
+                logger.error(
+                    f"Sample {sample_id} does not belong to cohort or analysis groups")
+
 
     def get_n_pca_closest_samples(self, sample_id, n=10)-> pd.DataFrame:
         """
@@ -279,13 +406,13 @@ class Mosdepth_df():
         represented in the PCA dimensional space (extracts similar samples given an id). It
         also returns the same point as the similar points obtained.
         """
-        distances = euclidean_distances(self.pca_df.loc[self.pca_df['sample_id'] == sample_id, ["PC1", "PC2"]], self.pca_df[["PC1", "PC2"]])[0]
+        distances = euclidean_distances(self.analysis_df.loc[self.analysis_df['sample_id'] == sample_id, ["PC1", "PC2"]], self.cohort_df[["PC1", "PC2"]])[0]
 
         # Get the indices of the closest points
         closest_indices = distances.argsort()[:n]
 
         # Filter the dataframe to get the closest points
-        closest_points = self.pca_df.iloc[closest_indices]
+        closest_points = self.cohort_df.iloc[closest_indices]
 
         logger.info(f"Closest {n} points to sample {sample_id}:")
         logger.info(closest_points)
@@ -303,7 +430,7 @@ class Mosdepth_df():
             df_copy = self.exon_coverage_df.copy()
             umap_plot_path = os.path.join(self.umap_plot_dir, "non_normalized_UMAP.html")
 
-        run_id = df_copy.pop("run_id").tolist()
+        # run_id = df_copy.pop("run_id").tolist()
         sample_id = df_copy.pop("sample").tolist()
         scaler = StandardScaler()
         scaled_data = scaler.fit_transform(df_copy)
@@ -311,7 +438,7 @@ class Mosdepth_df():
         umap_model = umap.UMAP(n_components=2, n_neighbors=15, min_dist=0.1)
         umap_result = umap_model.fit_transform(scaled_data)
         self.umap_df = pd.DataFrame(data=umap_result, columns=["PC1", "PC2"])
-        self.umap_df["run_id"] = run_id
+        # self.umap_df["run_id"] = run_id
         self.umap_df["sample_id"] = sample_id
         logger.info(f"Creating UMAP plot stored in: {umap_plot_path}")
         # Visualize the PCA result
@@ -319,7 +446,7 @@ class Mosdepth_df():
         custom_palette = px.colors.qualitative.Dark24
 
         # Create an interactive scatter plot with color based on run_id and hover information showing sample_id
-        fig = px.scatter(self.umap_df, x='PC1', y='PC2', color='run_id', hover_data=['sample_id'], title='UMAP Result', color_discrete_sequence=custom_palette)
+        fig = px.scatter(self.umap_df, x='PC1', y='PC2', hover_data=['sample_id'], title='UMAP Result', color_discrete_sequence=custom_palette)
 
         # Update layout to show grid
         fig.update_layout(
@@ -337,9 +464,9 @@ class Mosdepth_df():
     def get_heatmap(self, heatmap_path):
         df_copy = self.exon_coverage_df.copy()
         # Convert all columns to numeric (excluding sample_id and run_id)
-        numeric_columns = df_copy.columns.difference(['sample', 'run_id'])
+        numeric_columns = df_copy.columns.difference(['sample'])
         df_copy[numeric_columns] = df_copy[numeric_columns].apply(pd.to_numeric)
-        run_id = df_copy.pop("run_id").tolist()
+        # run_id = df_copy.pop("run_id").tolist()
         # Set sample_id as index
         df_copy.set_index('sample', inplace=True)
         logger.info(f"Creating heatmap of exons coverage depth")

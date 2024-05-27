@@ -10,7 +10,10 @@ class Picard():
         self.reference_dir = ref_conf.hg19.dir_path
         self.ref_dict_file = ref_conf.hg19.dict
         self.ref_fasta_file = ref_conf.hg19.fasta
-
+        self.picard_dirname = "Picard"
+        self.picard_dir = os.path.join(docker_conf.bam_dir, self.picard_dirname)
+        if not os.path.isdir(self.picard_dir):
+            os.mkdir(self.picard_dir)
     def create_fasta_dict(self):
         self.ref_dict_file = self.ref_fasta_file.replace("fasta", "dict")
         if os.path.exists(os.path.join(self.reference_dir, self.ref_dict_file)):
@@ -70,9 +73,8 @@ class Picard():
             self.run_bed_to_interval_list(Bed)
 
         hsmetrics_filename = f"{Bam.filename}_hs_metrics.txt"
-        picard_dirname = "Picard"
-        picard_dir = os.path.join(Bam.dir, picard_dirname)
-        hsmetrics_path = os.path.join(picard_dir, hsmetrics_filename)
+
+        hsmetrics_path = os.path.join(self.picard_dir, hsmetrics_filename)
         if os.path.isfile(hsmetrics_path):
             logger.info(
                 f"HsMetrics output file already available: {hsmetrics_path}"
@@ -80,19 +82,19 @@ class Picard():
             Bam.set_hs_metrics(hsmetrics_path)
             return(hsmetrics_path)
 
-        if not os.path.isdir(picard_dir):
-            os.mkdir(picard_dir)
+
         picard_cmd = [
             "docker", "run",
             "-v", f"{Bed.dir}:/bed_dir",
             "-v", f"{self.reference_dir}:/ref_dir",
+            "-v", f"{self.picard_dir}/output_dir"
             "-v", f"{Bam.dir}:/bam_dir",
             self.docker_conf.picard["image"],
             "java", "-Xmx60g", "-jar",
             "/usr/picard/picard.jar",
             "CollectHsMetrics",
             "--INPUT", f"/bam_dir/{Bam.filename}",
-            "--OUTPUT", f"/bam_dir/{picard_dirname}/{hsmetrics_filename}",
+            "--OUTPUT", f"/output_dir/{hsmetrics_filename}",
             "--BAIT_INTERVALS", f"/bed_dir/{Bed.interval_list_filename}",
             "--TARGET_INTERVALS", f"/bed_dir/{Bed.interval_list_filename}"
         ]
