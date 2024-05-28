@@ -14,7 +14,7 @@ gatk:
   image: broadinstitute/gatk
   version: 4.2.2.0
 cnvkit:
-  image: etal/cnvkit:0.9.8
+  image: etal/cnvkit
   version: 0.9.8
 
 

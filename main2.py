@@ -75,24 +75,20 @@ for run in runs:
 
     Run = Analysis_Run(run_path, is_cohort=cohort)
     Run.get_Bams_and_Samples()
+
     run_list.add(Run)
     # if i + len(Run.samples_147) > num_cohort_samples:
     #     analyse_run.append(Run)
     for Sample_147 in Run.samples_147:
-        if Sample_147.sample_id not in samples_analysed2:
-            samples_analysed2[Sample_147.sample_id] = [Sample_147.bam.path]
-            i += 1
-        else:
-            samples_analysed2[Sample_147.sample_id].append(Sample_147.bam.path)
-            print(f"\n\n\nSample already analysed: {Sample_147.sample_id}:\n{samples_analysed2[Sample_147.sample_id]}\n\n\n")
-            Run.remove_sample(Sample_147)
-            continue
+        i += 1
+
     
     run_list.add(Run)
 
 print(f"cohorts runs: {len(cohort_runs)}")
 
 for Cohort_Run in cohort_runs:
+    Cohort_Run.create_symbolic_link(ref_conf)
     for Cohort_Sample in Cohort_Run.samples_147:
         cohort_sample_id_sample_obj[Cohort_Sample.sample_id] = Cohort_Sample
         cohort_samples.add(Cohort_Sample)
@@ -125,7 +121,7 @@ cluster_samples = Cluster_Pca.set_hdbscan_cluster_samples(cohort_sample_id_sampl
 # Cluster_Umap.do_hierarchical_clustering()
 # Cluster_Umap.apply_hdbscan(min_samples=15, min_cluster_size=3)
 for Analysis_run in analysis_runs:
-
+    Analysis_run.create_symbolic_link(ref_conf)
     for Analysis_sample in Analysis_run.samples_147:
         analysis_sample_id_sample_obj[Analysis_sample.sample_id] = Analysis_sample
         analysis_samples.add(Analysis_sample)
@@ -155,41 +151,42 @@ Joined_Mosdepth_df.assign_sample_outliers(analysis_sample_id_sample_obj, cohort_
 cohort_samples = {sample for sample in cohort_samples if sample.is_outlier is False}
 analysis_samples = {sample for sample in analysis_samples if sample.is_outlier is False}
 
-# GATK gCNV
-force_run = False
-Gatk_obj = Gatk_gCNV(docker_conf, ref_conf, Bed_obj, force_run)
-Gatk_obj.run_preprocess_intervals()
-# creating hdf5 file for each sample
-for cohort_Sample in cohort_samples:
+# # GATK gCNV
+# force_run = False
+# Gatk_obj = Gatk_gCNV(docker_conf, ref_conf, Bed_obj, force_run)
+# Gatk_obj.run_preprocess_intervals()
+# # creating hdf5 file for each sample
+# for cohort_Sample in cohort_samples:
 
-    Gatk_obj.run_collect_read_counts(cohort_Sample)
+#     Gatk_obj.run_collect_read_counts(cohort_Sample)
 
-Gatk_obj.run_index_feature_file()
-Gatk_obj.run_annotate_intervals()
-Gatk_obj.run_filter_intervals(cohort_samples)
-Gatk_obj.run_interval_list_tools()
-Gatk_Cohort = Cohort_Gatk_gCNV(docker_conf, ref_conf, Bed_obj, cohort_samples, force_run)
-Gatk_Cohort.run_determine_germline_contig_ploidy()
-Gatk_Cohort.run_germline_cnv_caller()
-
-
+# Gatk_obj.run_index_feature_file()
+# Gatk_obj.run_annotate_intervals()
+# Gatk_obj.run_filter_intervals(cohort_samples)
+# Gatk_obj.run_interval_list_tools()
+# Gatk_Cohort = Cohort_Gatk_gCNV(docker_conf, ref_conf, Bed_obj, cohort_samples, force_run)
+# Gatk_Cohort.run_determine_germline_contig_ploidy()
+# Gatk_Cohort.run_germline_cnv_caller()
 
 
+# CNV_KIT
+CnvKit = CNV_Kit(docker_conf, ref_conf, Bed_obj)
+CnvKit.run_batch_germline_pipeline(cohort_samples, analysis_samples)
 for analysis_run in analysis_runs:
 
     # RUN DECON
-    # Decon_obj = Decon(docker_conf, ref_conf, Bed_obj, analysis_run)
-    # Decon_obj.get_input_file()
-    # Decon_obj.run_read_in_bams()
-    # Decon_obj.run_identify_failed_rois()
-    # Decon_obj.run_make_CNVcalls()
-    for Analysis_Sample in analysis_run.samples_147:
-        # RUN GATK
-        Gatk_obj.run_collect_read_counts(Analysis_Sample)
-        Sample_Case_Gatk_gCNV = Case_Gatk_gCNV(Gatk_Cohort, Analysis_Sample, docker_conf, ref_conf, Bed_obj, force_run)
-        Sample_Case_Gatk_gCNV.run_determine_germline_contig_ploidy()
-        Sample_Case_Gatk_gCNV.run_germline_cnv_caller()
-        Sample_Case_Gatk_gCNV.run_postprocess_germline_calls()
+    Decon_obj = Decon(docker_conf, ref_conf, Bed_obj, analysis_run)
+    Decon_obj.get_input_file()
+    Decon_obj.run_read_in_bams()
+    Decon_obj.run_identify_failed_rois()
+    Decon_obj.run_make_CNVcalls()
+    # for Analysis_Sample in analysis_run.samples_147:
+    #     # RUN GATK
+    #     Gatk_obj.run_collect_read_counts(Analysis_Sample)
+    #     Sample_Case_Gatk_gCNV = Case_Gatk_gCNV(Gatk_Cohort, Analysis_Sample, docker_conf, ref_conf, Bed_obj, force_run)
+    #     Sample_Case_Gatk_gCNV.run_determine_germline_contig_ploidy()
+    #     Sample_Case_Gatk_gCNV.run_germline_cnv_caller()
+    #     Sample_Case_Gatk_gCNV.run_postprocess_germline_calls()
 
 
 # # creating a model for each sample

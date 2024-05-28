@@ -9,6 +9,9 @@ class Bam():
         self.bai_path = f"{self.path}.bai"
         self.bai_filename = os.path.basename(self.bai_path)
         self.validate_bam_bai()
+
+        self.symbolic_link = None # symbolic link to have all cohort/analysis samples in corresponding directory
+
         self.volume = "/bam_dir"
         self.gatk_dirname = "GATK_gCNV"
         self.gatk_dir = os.path.join(self.dir, self.gatk_dirname)
@@ -19,7 +22,8 @@ class Bam():
         self.hs_metrics_path = hs_metrics_path
         self.hs_metrics_filename = os.path.basename(self.hs_metrics_path)
 
-
+    def set_symbolic_link(self, symbolic_link):
+        self.symbolic_link = symbolic_link
     def validate_bam_bai(self):
         bam_size = os.path.getsize(self.path)
         bai_size = os.path.getsize(self.bai_path)

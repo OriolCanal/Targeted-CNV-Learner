@@ -7,7 +7,8 @@ class Bed():
             interval_list_path="",
             annotated_intervals_path="",
             preprocessed_intervals_path="",
-            filtered_intervals_path=""
+            filtered_intervals_path="",
+            grapes_bed_path=""
         ):
         self.path = bed_path
         self.filename = os.path.basename(self.path)
@@ -25,6 +26,9 @@ class Bed():
         self.filtered_intervals_path = filtered_intervals_path
         self.filtered_intervals_filename = os.path.basename(self.filtered_intervals_path)
         
+        self.grapes_bed_path = grapes_bed_path
+        self.grapes_bed_filename = os.path.basename(self.grapes_bed_path)
+        
         self.volume = "/bed_dir"
 
     def get_interval_list_path(self):
@@ -35,7 +39,16 @@ class Bed():
                 f"Specify a interval_list_path before trying to obtain it, you can obtain by:\n\
                 \tSpecifying in Bed class as input parameter\n\
                 \tRunning Picard.get_intervals_from_bed()."))
-        
+    
+    def set_grapes_bed(self, grapes_bed_path):
+        if os.path.isfile(grapes_bed_path) and os.path.getsize(grapes_bed_path) > 0:
+            self.grapes_bed_path = grapes_bed_path
+            self.grapes_bed_filename = os.path.basename(grapes_bed_path)
+        else:
+            raise ValueError(
+                f"Grapes bed path does not exist: {grapes_bed_path}"
+            )
+
     def set_interval_list_path(self, interval_list_path):
         if os.path.isfile(interval_list_path) and os.path.getsize(interval_list_path) > 0:
             self.interval_list_path = interval_list_path

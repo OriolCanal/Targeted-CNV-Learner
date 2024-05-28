@@ -8,6 +8,8 @@ class CNV_Algorithm():
         self.main_dir = reference_conf.main_dir
         self.Bed = Bed
         self.reference_fasta = reference_conf.hg19.fasta_path
+        self.fasta_dir = os.path.dirname(self.reference_fasta)
+        self.fasta_filename = os.path.basename(self.reference_fasta)
         self.dict_filename = reference_conf.hg19.dict
         self.results_dir = os.path.join(self.main_dir, "Results")
         if not os.path.exists(self.results_dir):

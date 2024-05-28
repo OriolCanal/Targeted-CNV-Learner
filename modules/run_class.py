@@ -7,12 +7,37 @@ from modules.log import logger
 from modules.mongo_classes import Sample
 from modules.bam import Bam
 class Analysis_Run():
+    samples_analysed = set()
+    duplicated_samples = set()
     def __init__(self, run_path, is_cohort=False):
         self.run_path = run_path
         self.run_id = os.path.basename(run_path)
         self.samples_147 = list()
         self.is_cohort = is_cohort
     
+    def create_symbolic_link(self, ref_conf):
+        if self.is_cohort:
+            self.symbolic_link_dir = os.path.join(ref_conf.main_dir, "cohort_symbolic_link")
+            if not os.path.exists(self.symbolic_link_dir):
+                os.mkdir(self.symbolic_link_dir)
+        if not self.is_cohort:
+            self.symbolic_link_dir = os.path.join(ref_conf.main_dir, "analysis_symbolic_link")
+            if not os.path.exists(self.symbolic_link_dir):
+                os.mkdir(self.symbolic_link_dir)
+        
+        for sample in self.samples_147:
+            
+
+
+            destination_bam_path = os.path.join(self.symbolic_link_dir, sample.bam.filename)
+            destination_bai_path = os.path.join(self.symbolic_link_dir, sample.bam.bai_filename)
+            if not os.path.exists(destination_bam_path):
+                os.symlink(sample.bam.path, destination_bam_path)
+                os.symlink(sample.bam.bai_path, destination_bai_path)
+
+                bam = sample.bam
+                bam.set_symbolic_link(destination_bam_path)
+
     # def get_samples_from_db(self, Run_mongo):
     #     try:
     #         run_doc = Run_mongo.objects.get(run_id=self.run_id)
@@ -48,7 +73,17 @@ class Analysis_Run():
         bams = [bam for bam in bams_bais if bam.endswith(".bam")]
 
         for bam in bams:
-            bam_path = os.path.join(self.run_path, bam) 
+            # avoiding duplicated samples
+            if bam not in self.samples_analysed:
+                self.samples_analysed.add(bam)
+            else:
+                logger.info(
+                    f"Bam: {bam} already analysed"
+                )
+                continue
+                
+            bam_path = os.path.join(self.run_path, bam)
+            self.duplicated_samples.add(bam_path)
             Bam_class = Bam(bam_path)
             sample_name = bam.split(".")[0]
             sample = Sample(Bam=Bam_class, sample_id=sample_name, run_id=self.run_id, is_cohort=self.is_cohort)

@@ -15,13 +15,20 @@ class CNV_Kit(CNV_Algorithm):
         self.normal_cnn_filename = "reference.cnn" 
         self.normal_cnn = os.path.join(self.decon_dir, self.normal_cnn_filename)
         self.results_filename = "decon_results"
-        self.resutls_dir = os.path.join(self.decon_results_dir, self.resutls_filename)
+        self.resutls_dir = os.path.join(self.decon_results_dir, self.results_filename)
 
 
         if not os.path.exists(self.decon_results_dir):
             os.mkdir(self.decon_results_dir)
         
-    def create_access_file(self, control_samples, analysis_samples):
+    def run_batch_germline_pipeline(self, control_samples, analysis_samples):
+        """
+        Run batch CNV-Kit pipeline
+        
+        Params:
+            control_samples(list): list of control samples objects that will be used to create the reference cnn
+            analysis_samples(list): list of analysis samples objects that will be analyse for CNVs.
+        """
         fasta_dir = os.path.dirname(self.reference_fasta)
         fasta_filename = os.path.basename(self.reference_fasta)
 
@@ -29,19 +36,20 @@ class CNV_Kit(CNV_Algorithm):
         cmd = [
             self.docker_path, "run",
             "-v", f"{self.Bed.dir}:{self.Bed.volume}",
-            "-v", f"{self.cnv_kit_image}:{self.cnv_kit_version}",
             "-v", f"{fasta_dir}:{fasta_volume}",
             "-v", f"{self.decon_dir}:/decon_dir",
             "-v", f"{self.decon_results_dir}:/decon_results",
+
         ]
         runs_volumes = self.get_runs_volumes(control_samples, analysis_samples)
         
         docker_control_samples = self.get_docker_samples(control_samples)
-        docker_control_samples.insert("--normal")
+        docker_control_samples.insert(0, "--normal")
         docker_analysis_samples = self.get_docker_samples(analysis_samples)
         cmd.extend(runs_volumes)
         cmd.extend(
             [
+                f"{self.cnv_kit_image}:{self.cnv_kit_version}",
                 "cnvkit.py", "batch",
             ]
         )
@@ -59,37 +67,29 @@ class CNV_Kit(CNV_Algorithm):
         self.run_cmd(cmd, "CNVKit copy number calling pipeline")
     
 
-    def create_reference(self, control_samples, analysis_samples):
-
-        cmd = [
-            self.docker_path, "run",
-            "-v", f"{self.Bed.dir}:{self.Bed.volume}",
-
-        ]
-        runs_volumes = self.get_runs_volumes(control_samples, analysis_samples)
-
-        cmd.extend(runs_volumes)
-
-        cmd.extend([
-
-        ])
     def get_runs_volumes(self, control_samples, analysis_samples):
+        """
+        It gets all the volumes of all the runs analysed by the pipeline
+        """
         runs_analysed = list()
         run_volumes = list()
+        volume = "-v"
         for sample in control_samples:
             run_path = os.path.dirname(sample.bam.path)
             run_id = sample.run_id
             if run_path not in runs_analysed:
-                run_volume = f"{run_path}:/{run_id}"
+                run_volume = f"{run_path}:/{run_id.lower()}"
                 runs_analysed.append(run_path)
+                run_volumes.append(volume)
                 run_volumes.append(run_volume)
         
         for sample in analysis_samples:
             run_path = os.path.dirname(sample.bam.path)
             run_id = sample.run_id
             if run_path not in runs_analysed:
-                run_volume = f"{run_path}:/{run_id}"
+                run_volume = f"{run_path}:/{run_id.lower()}"
                 runs_analysed.append(run_path)
+                run_volumes.append(volume)
                 run_volumes.append(run_volume)
         
         return run_volumes
@@ -106,7 +106,10 @@ class CNV_Kit(CNV_Algorithm):
         sample_docker_path = list()
         for sample in samples:
             run_id = sample.run_id
+            print(f"runid: {run_id}")
             sample_docker_path.append(
-                f"/{run_id}/{sample.bam.filename}")
+                f"/{run_id.lower()}/{sample.bam.filename}")
+        
+        return(sample_docker_path)
     
 
