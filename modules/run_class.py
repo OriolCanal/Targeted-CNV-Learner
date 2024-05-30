@@ -35,8 +35,8 @@ class Analysis_Run():
                 os.symlink(sample.bam.path, destination_bam_path)
                 os.symlink(sample.bam.bai_path, destination_bai_path)
 
-                bam = sample.bam
-                bam.set_symbolic_link(destination_bam_path)
+            bam = sample.bam
+            bam.set_symbolic_link(destination_bam_path)
 
     # def get_samples_from_db(self, Run_mongo):
     #     try:
@@ -101,19 +101,61 @@ class Sample():
         self.cluster = None
         self.is_outlier = False
         self.is_cohort = is_cohort
+        self.cnv_kit_vcf_path = None
+        self.cnv_kit_vcf_filename = None
+        self.gatk_vcf_filename = None
+        self.gatk_vcf_path = None
+        self.cnvs = {
+            "gatk": list(),
+            "decon": list(),
+            "cnvkit": list(),
+            "grapes": list(),
+            "in_silico": list()
+        }
+        self.in_silico_cnvs = list()
+        self.gatk_cnvs = list()
+        self.decon_cnvs = list()
+        self.cnvkit_cnvs = list()
+        self.grapes_cnvs = list()
 
+    def get_all_callers_cnvs(self):
+        all_cnvs = list()
+        for key, value in self.cnvs.items():
+            if key == "in_silico":
+                continue
+            all_cnvs.extend(value)
+        
+        return(all_cnvs)
 
-class Analysis_Sample():
-    compendi_bai_path = "http://172.16.83.24:8001/download_sample_bai/"
-    compendi_bam_path = "http://172.16.83.24:8001/download_sample_bam/"
+    def set_cnv_kit_vcf(self, cnv_kit_vcf_path):
+        if os.path.isfile(cnv_kit_vcf_path):
+            self.cnv_kit_vcf_path = cnv_kit_vcf_path
+        else:
+            raise ValueError(
+                f"Hdf5 path does not exist: {cnv_kit_vcf_path}"
+            )
+        self.cnv_kit_vcf_filename = os.path.basename(cnv_kit_vcf_path)
 
-    def __init__(self, Bam, sample_id=None, run_id=None):
-        self.run_id = run_id
-        self.sample_id = sample_id
-        self.downloaded_bam = False
-        self.bam = Bam # Bam class containing info about bam files
-        self.assigned_cluster = None
-        self.is_outlier = False
+    def set_gatk_vcf(self, gatk_vcf_path):
+        if os.path.isfile(gatk_vcf_path):
+            self.gatk_vcf_path = gatk_vcf_path
+        else:
+            raise ValueError(
+                f"Hdf5 path does not exist: {gatk_vcf_path}"
+            )
+        self.gatk_vcf_filename = os.path.basename(gatk_vcf_path)
+
+# class Analysis_Sample():
+#     compendi_bai_path = "http://172.16.83.24:8001/download_sample_bai/"
+#     compendi_bam_path = "http://172.16.83.24:8001/download_sample_bam/"
+
+#     def __init__(self, Bam, sample_id=None, run_id=None):
+#         self.run_id = run_id
+#         self.sample_id = sample_id
+#         self.downloaded_bam = False
+#         self.bam = Bam # Bam class containing info about bam files
+#         self.assigned_cluster = None
+#         self.is_outlier = False
 
 
 # class Analysis_Sample():

@@ -90,6 +90,7 @@ print(f"cohorts runs: {len(cohort_runs)}")
 for Cohort_Run in cohort_runs:
     Cohort_Run.create_symbolic_link(ref_conf)
     for Cohort_Sample in Cohort_Run.samples_147:
+        print(Cohort_Sample.bam.symbolic_link)
         cohort_sample_id_sample_obj[Cohort_Sample.sample_id] = Cohort_Sample
         cohort_samples.add(Cohort_Sample)
         # Picard
@@ -171,6 +172,7 @@ analysis_samples = {sample for sample in analysis_samples if sample.is_outlier i
 
 # CNV_KIT
 CnvKit = CNV_Kit(docker_conf, ref_conf, Bed_obj)
+
 CnvKit.run_batch_germline_pipeline(cohort_samples, analysis_samples)
 for analysis_run in analysis_runs:
 

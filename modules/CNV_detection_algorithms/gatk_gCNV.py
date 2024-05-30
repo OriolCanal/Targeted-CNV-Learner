@@ -438,6 +438,14 @@ class Case_Gatk_gCNV(Gatk_gCNV):
 
         scatter_files = self.get_scatters()
 
+        self.segments_vcf_filename = f"{self.sample.sample_id}_segments_cluster.vcf.gz"
+        self.segments_vcf_path = os.path.join(self.gatk_results_dir, self.segments_vcf_filename)
+
+        if os.path.exists(self.segments_vcf_path):
+            logger.info(
+                f"GATK already run for sample: {self.sample.sample_id}: {self.segments_vcf_path}"
+            )
+            self.sample.set_gatk_vcf(self.segments_vcf_path)
 
 
         cmd = [
@@ -473,17 +481,17 @@ class Case_Gatk_gCNV(Gatk_gCNV):
             "--contig-ploidy-calls", f"/model_dir/{self.ploidy_case_prefix}-calls",
             "--sample-index", "0", # in case mode is allways 0
             "--output-genotyped-intervals", f"/results_dir/{self.sample.sample_id}_intervals_cluster.vcf.gz",
-            "--output-genotyped-segments", f"/results_dir/{self.sample.sample_id}_segments_cluster.vcf.gz",
+            "--output-genotyped-segments", f"/results_dir/{self.segments_vcf_filename}",
             "--output-denoised-copy-ratios", f"/results_dir/{self.sample.sample_id}_denoised_copy_rations.hdf5",
             "--sequence-dictionary", f"/ref_dir/{self.dict_filename}"
         ]
         cmd.extend(cmd2)
         self.run_cmd(cmd, "GATK PostprocessGermlineCNVCalls in case mode")
 
+        self.sample.set_gatk_vcf(self.segments_vcf_path)
     def process_cnvs(self):
-        segments_file = os.path.join(self.gatk_results_dir, f"{self.sample.sample_id}_segments_cluster{self.sample.cluster}.vcf.gz")
         cnvs = list()
-        with gzip.open(segments_file, "rt") as f:
+        with gzip.open(self.segments_vcf_path, "rt") as f:
             for line in f:
                 if line.startswith("#"):
                     continue
@@ -501,7 +509,8 @@ class Case_Gatk_gCNV(Gatk_gCNV):
                 end = fields[7].replace("END=", "")
                 format = fields[8]
                 other = fields[9]
-                cnv = CNV(chr=chr, start=pos, end=end, type=cnv_type, algorithm="GATK_gCNV", qual=qual, sample=self.sample.sample_id)
+                cnv = CNV(chr=chr, start=pos, end=end, type=cnv_type, sample=self.sample.sample_id, algorithm="GATK_gCNV", qual=qual)
+                self.sample.gatk_cnvs.append(cnv)
                 yield(cnv)
         
         return None
