@@ -18,4 +18,8 @@ cnvkit/
 analysis_symbolic_link/
 cohort_symbolic_link/
 CNVKit/
-
+DECON/
+cohort_bams/
+bams_with_cnvs/
+analysis_bams/
+results_pre_insilico/

@@ -1,6 +1,8 @@
 import os
 
 class Bam():
+    cohort_bam_dir = None
+    analysis_bam_dir = None
     def __init__(self, bam_path, hs_metrics_path="", hdf5_path=""):
         self.path = bam_path
         self.filename = os.path.basename(self.path)
@@ -21,6 +23,30 @@ class Bam():
 
         self.hs_metrics_path = hs_metrics_path
         self.hs_metrics_filename = os.path.basename(self.hs_metrics_path)
+
+    def set_simulated_bam(self, simulated_cnvs_dir):
+        simulated_bam_filename = self.filename.replace(".bam", ".simulated.bam")
+        simulated_bam_path = os.path.join(simulated_cnvs_dir, simulated_bam_filename)
+
+        if os.path.exists(simulated_bam_path) and os.path.getsize(simulated_bam_path) > 0:
+            self.path = simulated_bam_path
+            self.filename = simulated_bam_filename
+            self.dir = simulated_cnvs_dir
+        else: 
+            raise ValueError(
+                f"Bam with CNV simulated does not exist: {simulated_bam_path}"
+            )
+    
+
+    @classmethod
+    def set_cohort_bam_dir(cls, directory):
+        if os.path.isdir(directory):
+            cls.cohort_bam_dir = directory
+    
+    @classmethod
+    def set_analysis_bam_dir(cls, directory):
+        if os.path.isdir(directory):
+            cls.analysis_bam_dir = directory
 
     def set_symbolic_link(self, symbolic_link):
         self.symbolic_link = symbolic_link

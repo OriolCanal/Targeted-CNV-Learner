@@ -87,7 +87,7 @@ class Picard():
             "docker", "run",
             "-v", f"{Bed.dir}:/bed_dir",
             "-v", f"{self.reference_dir}:/ref_dir",
-            "-v", f"{self.picard_dir}/output_dir"
+            "-v", f"{self.picard_dir}:/output_dir",
             "-v", f"{Bam.dir}:/bam_dir",
             self.docker_conf.picard["image"],
             "java", "-Xmx60g", "-jar",

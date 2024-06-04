@@ -72,7 +72,7 @@ class CNV_Kit(CNV_Algorithm):
         cmd.extend(docker_control_samples)
         cmd.extend(
             [
-                f"--targets", f"{self.Bed.volume}/{self.Bed.filename}",
+                f"--targets", f"{self.Bed.volume}/{self.Bed.roi_filename}",
                 "--fasta", f"{fasta_volume}/{fasta_filename}",
                 "--output-reference", f"/cnv_kit_dir/{self.normal_cnn_filename}",
                 "--output-dir", f"/cnv_kit_results/{self.results_folder}"
@@ -82,7 +82,6 @@ class CNV_Kit(CNV_Algorithm):
         self.run_cmd(cmd, "CNVKit copy number calling pipeline")
     
     def run_batch_germline_pipeline_with_existing_reference(self, analysis_samples, cpus=4):
-        reference = self.normal_cnn
 
         cmd = [
             self.docker_path, "run",

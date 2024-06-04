@@ -1,0 +1,3 @@
+[submodule "SpikeInBAM"]
+	path = SpikeInBAM
+	url = https://github.com/bdolmo/SpikeInBAM.git

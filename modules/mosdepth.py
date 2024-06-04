@@ -69,7 +69,7 @@ class Mosdepth():
         mosdepth_cmd = [
             self.docker_path, "run",
             "-v", f"{self.bed_dir}:/bed_dir",
-            "-v", f"{self.mosdepth_dir}:/ouptut_dir"
+            "-v", f"{self.mosdepth_dir}:/output_dir",
             "-v", f"{bam_dir}:/bam_dir",
             f"{self.mosdepth_image}:{self.mosdepth_version}",
             "mosdepth", 
@@ -390,6 +390,7 @@ class Joined_Mosdepth_Df(Mosdepth_df):
             sample_id = row["sample_id"]
 
             if sample_id in analysis_sample_id_sample_obj:
+                print(sample_id)
                 sample_obj = analysis_sample_id_sample_obj[sample_id]
                 sample_obj.is_outlier = True
             elif sample_id in cohort_sample_id_sample_obj:

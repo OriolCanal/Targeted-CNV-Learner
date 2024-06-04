@@ -8,11 +8,19 @@ class Bed():
             annotated_intervals_path="",
             preprocessed_intervals_path="",
             filtered_intervals_path="",
-            grapes_bed_path=""
+            grapes_bed_path="",
+            sorted_merged_bed="suddxl.v3.147.ROI.sorted.merged.bed",
+            roi_bed = "suddxl.v3.147.ROI.bed"
         ):
         self.path = bed_path
         self.filename = os.path.basename(self.path)
         self.dir = os.path.dirname(self.path)
+
+
+        self.sorted_merged_bed_filename = sorted_merged_bed
+        self.roi_bed = os.path.join(self.dir, roi_bed)
+        self.roi_bed_filename = roi_bed
+
 
         self.interval_list_path = interval_list_path
         self.interval_list_filename = os.path.basename(self.interval_list_path)

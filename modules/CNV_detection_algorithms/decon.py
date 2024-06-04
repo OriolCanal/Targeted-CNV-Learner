@@ -2,7 +2,7 @@ import os
 import subprocess
 
 from modules.log import logger
-
+from modules.detected_CNV import Detected_CNV
 from modules.CNV_detection_algorithms.CNV_algorithm import CNV_Algorithm
 
 class Decon(CNV_Algorithm):
@@ -16,8 +16,8 @@ class Decon(CNV_Algorithm):
         self.decon_folder = os.path.join(self.main_dir, "DECON")
         if not os.path.exists(self.decon_folder):
             os.mkdir(self.decon_folder)
-        self.bams_dir = os.path.dirname(self.control_samples[0].bam.path)
-        self.run_id = self.control_samples[0].run_id
+        self.bams_dir = self.Run.run_path
+        self.run_id = self.Run.run_id
         self.input_filename = f"{self.run_id}_decon_input.txt"
         self.input_path = os.path.join(self.decon_folder, self.input_filename)
         self.bam_volume = "bam_vol"
@@ -29,9 +29,11 @@ class Decon(CNV_Algorithm):
     def get_input_file(self):
         with open(self.input_path, "w") as f:
             for sample in self.Run.samples_147:
+                # take of outliers
+                if sample.is_outlier is not False:
+                    continue
                 sample_path = os.path.join(
                     "/bam_vol",
-                    sample.run_id,
                     os.path.basename(sample.bam.path)
                 )
 
@@ -49,13 +51,13 @@ class Decon(CNV_Algorithm):
         cmd = [
             self.docker_path, "run",
             "-v", f"{self.decon_folder}:/decon_folder",
-            "-v", f"{self.bams_dir}:/bam_dir",
-            "-v", f"{self.Bed.dir}:/{self.Bed.volume}",
+            "-v", f"{self.bams_dir}:/bam_vol",
+            "-v", f"{self.Bed.dir}:{self.Bed.volume}",
             "-v", f"{fasta_dir}:/fasta_dir",
             f"{self.decon_image}:{self.decon_version}",
             "ReadInBams.R", 
             "--bams", f"/decon_folder/{self.input_filename}",
-            "--bed", f"{self.Bed.volume}/{self.Bed.filename}",
+            "--bed", f"{self.Bed.volume}/{self.Bed.sorted_merged_bed_filename}",
             "--fasta", f"/fasta_dir/{fasta_filename}",
             "--out", f"/decon_folder/{self.run_id}"
         ]
@@ -101,5 +103,24 @@ class Decon(CNV_Algorithm):
         ]
 
         self.run_cmd(cmd, "DECON makeCNVcalls")
-            
+    
+
+    def parse_DECON_result(self, Sample_class=None):
+        output_files = os.listdir(self.decon_results_dir)
+        for file in output_files:
+            if not file.endswith("all.txt"):
+                continue
+            output_path = os.path.join(self.decon_results_dir, file)
+            with open(output_path, "r") as f:
+                for i, line in enumerate(f):
+                    if i == 0:
+                        continue
+                    line.strip().split("\t")
+                    sample =  line[1].split(".")[0]
+                    cnv_type, n_exons, start, end, chr, gene = line[6], line[7], line[8], line[9], line[10], line[16]
+                    cnv = Detected_CNV(start, end, chr, cnv_type, sample, n_exons, gene, algorithm="DECON")
+                    if Sample_class:
+                        sample_obj = Sample_class.sample_id_sample_obj[sample]
+                        sample_obj.cnvs["decon"].append(cnv)
+
 

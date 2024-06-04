@@ -279,7 +279,6 @@ class DockerConfig(YamlConfig):
             )
             output = p1.stdout.decode("UTF-8")
             error = p1.stderr.decode("UTF-8")
-            print(output, error, "heeey")
             if p1.returncode != 0:
                 msg = f"docker image {image} for {resource} was not found"
                 logger.error(msg)

@@ -15,6 +15,60 @@ class Analysis_Run():
         self.samples_147 = list()
         self.is_cohort = is_cohort
     
+    def put_bams_in_cohort_dir(self, ref_conf):
+        if self.is_cohort is True:
+            cohort_dir = os.path.join(ref_conf.main_dir, "cohort_bams")
+
+        if not os.path.exists(cohort_dir):
+            os.mkdir(cohort_dir)
+        
+        logger.info(
+            f"Copying bams of RUN: {self.run_id} to {cohort_dir}"
+            )
+        for sample in self.samples_147:
+            out_path = os.path.join(cohort_dir, sample.bam.filename)
+            if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+                continue
+            cmd = [
+                "cp", sample.bam.path, out_path
+            ]
+            subprocess.run(cmd)
+            out_path_bai = os.path.join(cohort_dir, sample.bam.bai_filename)
+            cmd_bai = [
+                "cp", sample.bam.bai_path, out_path_bai
+            ]
+            subprocess.run(cmd_bai)
+
+        
+        Bam.set_cohort_bam_dir(cohort_dir)
+
+    def put_bams_in_analysis_dir(self, ref_conf):
+        if self.is_cohort is False:
+            analysis_dir = os.path.join(ref_conf.main_dir, "analysis_bams")
+
+        if not os.path.exists(analysis_dir):
+            os.mkdir(analysis_dir)
+
+        logger.info(
+            f"Copying bams of RUN: {self.run_id} to {analysis_dir}"
+        )
+
+        for sample in self.samples_147:
+            out_path = os.path.join(analysis_dir, sample.bam.filename)
+            if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+                continue
+            cmd = [
+                "cp", sample.bam.path, out_path
+            ]
+            subprocess.run(cmd)
+            out_path_bai = os.path.join(analysis_dir, sample.bam.bai_filename)
+            cmd_bai = [
+                "cp", sample.bam.bai_path, out_path_bai
+            ]
+            subprocess.run(cmd_bai)
+
+        
+        Bam.set_analysis_bam_dir(analysis_dir)
     def create_symbolic_link(self, ref_conf):
         if self.is_cohort:
             self.symbolic_link_dir = os.path.join(ref_conf.main_dir, "cohort_symbolic_link")
@@ -26,8 +80,6 @@ class Analysis_Run():
                 os.mkdir(self.symbolic_link_dir)
         
         for sample in self.samples_147:
-            
-
 
             destination_bam_path = os.path.join(self.symbolic_link_dir, sample.bam.filename)
             destination_bai_path = os.path.join(self.symbolic_link_dir, sample.bam.bai_filename)
@@ -93,6 +145,7 @@ class Sample():
     compendi_bai_path = "http://172.16.83.24:8001/download_sample_bai/"
     compendi_bam_path = "http://172.16.83.24:8001/download_sample_bam/"
 
+    sample_id_sample_obj = dict()
     def __init__(self, Bam, sample_id=None, run_id=None, is_cohort=False):
         self.run_id = run_id
         self.sample_id = sample_id
@@ -112,11 +165,8 @@ class Sample():
             "grapes": list(),
             "in_silico": list()
         }
-        self.in_silico_cnvs = list()
-        self.gatk_cnvs = list()
-        self.decon_cnvs = list()
-        self.cnvkit_cnvs = list()
-        self.grapes_cnvs = list()
+        Sample.sample_id_sample_obj[self.sample_id] = self
+
 
     def get_all_callers_cnvs(self):
         all_cnvs = list()
@@ -126,6 +176,8 @@ class Sample():
             all_cnvs.extend(value)
         
         return(all_cnvs)
+    
+
 
     def set_cnv_kit_vcf(self, cnv_kit_vcf_path):
         if os.path.isfile(cnv_kit_vcf_path):

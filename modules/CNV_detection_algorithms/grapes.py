@@ -8,8 +8,8 @@ from modules.CNV_detection_algorithms.CNV_algorithm import CNV_Algorithm
 class Grapes(CNV_Algorithm):
     def __init__(self, docker_conf, reference_conf, Bed, force_run=False):
         super().__init__(docker_conf, reference_conf, Bed, force_run)
-        self.grapes_image = docker_conf.grapes["image"]
-        self.grapes_version = docker_conf.grapes["version"]
+        self.grapes_image = docker_conf.grapes2["image"]
+        self.grapes_version = docker_conf.grapes2["version"]
         self.grapes_dir = os.path.join(self.main_dir, "Grapes")
         self.grapes_results_dir = os.path.join(self.results_dir, "Grapes")
         if not os.path.exists(self.grapes_results_dir):
@@ -21,7 +21,7 @@ class Grapes(CNV_Algorithm):
 
         grapes_bed_path = bed_path.replace(".bed", ".grapes.bed")
         if os.path.exists(grapes_bed_path):
-            self.Bed.set_grapes_bed(grapes_bed)
+            self.Bed.set_grapes_bed(grapes_bed_path)
             logger.info(
                 f"Grapes bed already exists: {grapes_bed_path}"
             )
@@ -57,26 +57,87 @@ class Grapes(CNV_Algorithm):
                         line = "\t".join(tmp)
                         grapes_bed.write(line + "\n")
         
-        self.Bed.set_grapes_bed(grapes_bed)
+        self.Bed.set_grapes_bed(grapes_bed_path)
     
-    def run_grapes(self, control_samples, analysis_samples):
-        cohort_symbolic_link = control_samples[0].bam.symbolic_link
-        analysis_symbolic_link = analysis_samples[0].bam.symbolic_link
+
+    def create_baseline(self, control_samples):
+        for sample in control_samples:
+            cohort_dir = sample.bam.cohort_bam_dir
+            break
         cmd = [
             self.docker_path, "run",
             "-v", f"{self.fasta_dir}:/fasta_dir",
             "-v", f"{self.Bed.dir}:{self.Bed.volume}",
-            "-v", f"{cohort_symbolic_link}:/cohort_symbolic_link",
-            "-v", f"{analysis_symbolic_link}:/analysis_symbolic_link",
+            "-v", f"{cohort_dir}:/cohort_dir",
             "-v", f"{self.grapes_results_dir}:/grapes_results",
             f"{self.grapes_image}:{self.grapes_version}", "grapes2.py",
-            "--cases", "/analysis_symbolic_link/", 
-            "--control", "/cohort_symbolic_link/",
-            "--output", "/grapes_results",
+            "--bam_dir", "/cohort_dir",
+            "--output_dir", "/grapes_results",
             "--bed", f"{self.Bed.volume}/{self.Bed.grapes_bed_filename}",
             "--fasta", f"/fasta_dir/{self.fasta_filename}",
             "--genome", "hg19",
-            "--all"
+            "--baseline_db", "/grapes_results/grapes2_baseline.db"
         ]
 
-        self.run_cmd(cmd, "Running Grapes:")
+        # runs_volumes = self.get_runs_volumes(control_samples, analysis_samples)
+        # docker_control_samples = self.get_docker_samples(control_samples)
+        # docker
+        #     f"{self.grapes_image}:{self.grapes_version}", "grapes2.py",
+        #     "--cases", "/analysis_symbolic_link/", 
+        #     "--control", "/cohort_symbolic_link/",
+        #     "--output", "/grapes_results",
+        #     "--bed", f"{self.Bed.volume}/{self.Bed.grapes_bed_filename}",
+        #     "--fasta", f"/fasta_dir/{self.fasta_filename}",
+        #     "--genome", "hg19",
+        #     "--all"
+        # ]
+
+        self.run_cmd(cmd, "Grapes to create a baseline")
+
+
+    def get_runs_volumes(self, control_samples, analysis_samples):
+        """
+        It gets all the volumes of all the runs analysed by the pipeline
+        """
+        runs_analysed = list()
+        run_volumes = list()
+        volume = "-v"
+        for sample in control_samples:
+            run_path = os.path.dirname(sample.bam.path)
+            run_id = sample.run_id
+            if run_path not in runs_analysed:
+                run_volume = f"{run_path}:/{run_id}"
+                runs_analysed.append(run_path)
+                run_volumes.append(volume)
+                run_volumes.append(run_volume)
+        
+        for sample in analysis_samples:
+            run_path = os.path.dirname(sample.bam.path)
+            run_id = sample.run_id
+            if run_path not in runs_analysed:
+                run_volume = f"{run_path}:/{run_id}"
+                runs_analysed.append(run_path)
+                run_volumes.append(volume)
+                run_volumes.append(run_volume)
+        
+        return run_volumes
+    
+        
+    def get_docker_samples(self, samples):
+        """
+        Get the relative docker path of the samples based on the volumes created by runs.
+        
+        E.g. RUN20230405 will create a volume in docker named RUN20230405,
+        this function will obtain the relative path of each sample in the docker volume:
+        /RUN20230405/RB35342.bam
+        """
+        sample_docker_path = list()
+        for sample in samples:
+            run_id = sample.run_id
+            print(f"runid: {run_id}")
+            sample_docker_path.append(
+                f"/{run_id}/{sample.bam.filename}")
+        
+        return(sample_docker_path)
+    
+

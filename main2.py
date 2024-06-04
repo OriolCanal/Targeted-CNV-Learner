@@ -4,14 +4,16 @@ import sys
 import pandas as pd
 import random
 # from modules.create_mongo import MongoDBManager
-from modules.mongo_classes import Variant, Call, MongoDBManager, Annotation
-from modules.mongo_classes import Run as Mongo_Run
-from modules.mongo_classes import Sample as Mongo_Sample
+# from modules.mongo_classes import Variant, Call, MongoDBManager, Annotation
+# from modules.mongo_classes import Run as Mongo_Run
+# from modules.mongo_classes import Sample as Mongo_Sample
 from modules.bed import Bed
 from modules.bam import Bam
+from modules.detected_CNV import In_Silico_CNV
 from modules.CNV_detection_algorithms.CNV_Kit import CNV_Kit
 from modules.CNV_detection_algorithms.decon import Decon
 from modules.CNV_detection_algorithms.gatk_gCNV import Gatk_gCNV, Case_Gatk_gCNV, Cohort_Gatk_gCNV
+from modules.CNV_detection_algorithms.grapes import Grapes
 from modules.params import load_config
 from modules.log import logger
 from modules.picard import Picard, Metrics_Df
@@ -19,7 +21,7 @@ from modules.mosdepth import Mosdepth, Mosdepth_df, Cohort_Mosdepth_df, Analysis
 from modules.clustering import Clustering_Mosdepth
 from modules.run_class import Analysis_Run, Sample 
 from modules.utils import get_timestamp
-from modules.get_bam_bais import get_bams_bais
+from modules.cnv_generator import CNV_Generator
 logger.info(f"loading configuration files.")
 ann_conf, ref_conf, docker_conf, isoforms_conf = load_config()
 
@@ -63,6 +65,8 @@ random.seed(random_seed)
 runs = os.listdir(ref_conf.bam_dir)
 random.shuffle(runs)
 
+# stores sample_id : sample_obj
+sample_id_sample_obj = dict()
 for run in runs:
     run_path = os.path.join(ref_conf.bam_dir, run)
     bams = os.listdir(run_path)
@@ -85,7 +89,31 @@ for run in runs:
     
     run_list.add(Run)
 
+for run in cohort_runs:
+    run.put_bams_in_cohort_dir(ref_conf)
+for run in analysis_runs:
+    run.put_bams_in_analysis_dir(ref_conf)
 print(f"cohorts runs: {len(cohort_runs)}")
+
+# generate in silico cnvs
+CNV_generator = CNV_Generator(Bam.analysis_bam_dir, ref_conf, Bed_obj)
+CNV_generator.create_multiple_exons_config(cnv_type="del", out_filename="multiple_exons_deletion.config")
+CNV_generator.create_multiple_exons_config(cnv_type="dup", out_filename="multiple_exons_duplication.config")
+CNV_generator.create_single_exons_config(cnv_type="del", out_filename="single_exon_deletion.config")
+CNV_generator.create_single_exons_config(cnv_type="dup", out_filename="single_exon_duplication.config")
+filtered_config = CNV_generator.check_config_overlap()
+print(filtered_config)
+# CNVs_bams_dir = CNV_generator.generate_cnvs()
+in_silico_cnvs = In_Silico_CNV.parse_cnvs_config(config_path=filtered_config, sample_id_sample_obj=Sample.sample_id_sample_obj)
+CNV_generator.order_config(by_column=0)
+CNV_generator.order_config(by_column=1)
+
+CNVs_bams_dir = "/home/ocanal/Desktop/CNV_detection_on_targeted_sequencing/bams_with_cnvs"
+
+for run in analysis_runs:
+    for sample in run.samples_147:
+        sample.bam.set_simulated_bam(CNVs_bams_dir) # Bam path is now the simulated path
+
 
 for Cohort_Run in cohort_runs:
     Cohort_Run.create_symbolic_link(ref_conf)
@@ -122,7 +150,7 @@ cluster_samples = Cluster_Pca.set_hdbscan_cluster_samples(cohort_sample_id_sampl
 # Cluster_Umap.do_hierarchical_clustering()
 # Cluster_Umap.apply_hdbscan(min_samples=15, min_cluster_size=3)
 for Analysis_run in analysis_runs:
-    Analysis_run.create_symbolic_link(ref_conf)
+    # Analysis_run.create_symbolic_link(ref_conf)
     for Analysis_sample in Analysis_run.samples_147:
         analysis_sample_id_sample_obj[Analysis_sample.sample_id] = Analysis_sample
         analysis_samples.add(Analysis_sample)
@@ -152,6 +180,16 @@ Joined_Mosdepth_df.assign_sample_outliers(analysis_sample_id_sample_obj, cohort_
 cohort_samples = {sample for sample in cohort_samples if sample.is_outlier is False}
 analysis_samples = {sample for sample in analysis_samples if sample.is_outlier is False}
 
+for run in cohort_runs:
+    run.put_bams_in_cohort_dir(ref_conf)
+for run in analysis_runs:
+    run.put_bams_in_analysis_dir(ref_conf)
+# GRAPES
+
+# Grapes_obj = Grapes(docker_conf, ref_conf, Bed_obj)
+
+# Grapes_obj.get_grapes_bed()
+# Grapes_obj.create_baseline(cohort_samples)
 # # GATK gCNV
 # force_run = False
 # Gatk_obj = Gatk_gCNV(docker_conf, ref_conf, Bed_obj, force_run)
@@ -171,11 +209,13 @@ analysis_samples = {sample for sample in analysis_samples if sample.is_outlier i
 
 
 # CNV_KIT
-CnvKit = CNV_Kit(docker_conf, ref_conf, Bed_obj)
+# CnvKit = CNV_Kit(docker_conf, ref_conf, Bed_obj)
 
-CnvKit.run_batch_germline_pipeline(cohort_samples, analysis_samples)
+# CnvKit.run_batch_germline_pipeline(cohort_samples, analysis_samples)
 for analysis_run in analysis_runs:
-
+    # runs with only 1 sample cannot be analysed
+    if not len(analysis_run.samples_147) > 2:
+        continue
     # RUN DECON
     Decon_obj = Decon(docker_conf, ref_conf, Bed_obj, analysis_run)
     Decon_obj.get_input_file()
@@ -189,8 +229,9 @@ for analysis_run in analysis_runs:
     #     Sample_Case_Gatk_gCNV.run_determine_germline_contig_ploidy()
     #     Sample_Case_Gatk_gCNV.run_germline_cnv_caller()
     #     Sample_Case_Gatk_gCNV.run_postprocess_germline_calls()
+    #     Sample_Case_Gatk_gCNV.process_detected_cnvs()
 
-
+Decon_obj.parse_DECON_result(Sample)
 # # creating a model for each sample
 # for cluster in cluster_samples.keys():
 #     # Skipping outliers

@@ -13,8 +13,14 @@ mosdepth:
 gatk:
   image: broadinstitute/gatk
   version: 4.2.2.0
+decon:
+  image: bdolmo/decon
+  version: 1.0.2
 cnvkit:
   image: etal/cnvkit
   version: 0.9.8
+grapes2:
+  image: bdolmo/grapes2
+  version: latest
 
 

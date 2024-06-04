@@ -2,7 +2,7 @@ import os
 import gzip
 from modules.log import logger
 from modules.CNV_detection_algorithms.CNV_algorithm import CNV_Algorithm
-from modules.detected_CNV import CNV
+from modules.detected_CNV import Detected_CNV
 class Gatk_gCNV(CNV_Algorithm):
     """
     Run all the steps of GATK gCNV in:
@@ -489,7 +489,12 @@ class Case_Gatk_gCNV(Gatk_gCNV):
         self.run_cmd(cmd, "GATK PostprocessGermlineCNVCalls in case mode")
 
         self.sample.set_gatk_vcf(self.segments_vcf_path)
-    def process_cnvs(self):
+    
+    def process_detected_cnvs(self):
+        """
+        It takes the GATK output file and parses it creating CNV objects and assigning them to the 
+        corresponding sample object being analysed
+        """
         cnvs = list()
         with gzip.open(self.segments_vcf_path, "rt") as f:
             for line in f:
@@ -509,11 +514,11 @@ class Case_Gatk_gCNV(Gatk_gCNV):
                 end = fields[7].replace("END=", "")
                 format = fields[8]
                 other = fields[9]
-                cnv = CNV(chr=chr, start=pos, end=end, type=cnv_type, sample=self.sample.sample_id, algorithm="GATK_gCNV", qual=qual)
-                self.sample.gatk_cnvs.append(cnv)
-                yield(cnv)
+                cnv = Detected_CNV(chr=chr, start=pos, end=end, type=cnv_type, sample=self.sample.sample_id, algorithm="GATK_gCNV", qual=qual)
+                self.sample.cnvs["gatk"].append(cnv)
+                # yield(cnv)
         
-        return None
+        return self.sample.cnvs["gatk"]
 
             
 
