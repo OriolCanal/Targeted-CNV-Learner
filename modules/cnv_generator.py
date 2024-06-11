@@ -40,7 +40,7 @@ class CNV_Generator():
             )
             self.configs_generated.append(config_output_path)
             return(0)
-
+        print(self.generate_config_path, self.analysis_bam_dir, cnv_type, self.Bed_obj.roi_bed)
         cmd = [
             "python", self.generate_config_path,
             "--indir", self.analysis_bam_dir,
@@ -156,7 +156,21 @@ class CNV_Generator():
         with open(output_file, 'w') as f:
             f.writelines(sorted_lines)
 
-
+    # def assign_in_silico_cnvs_to_sample(self, Sample_class):
+    #     with open(self.filtered_config, "r") as f:
+    #         for line in f:
+    #             line = line.strip().split("\t")
+    #             bam_path, chr, start, end, svtype, gene_exons = line[0], line[1], line[2], line[3], line[4], line[5]
+    #             sample = os.path.basename(bam_path).split(".")[0]
+    #             if "_" in gene_exons:
+    #                 gene_exons = gene_exons.split("_")
+    #                 gene = gene_exons[0]
+    #                 exon_start = gene_exons[1]
+    #                 exon_end = gene_exons[3]
+    #                 numb_exons = exon_end - exon_start - 1
+    #             sample_obj = Sample_class.sample_id_sample_obj[sample]
+    #             sample_obj.cnvs["decon"].append(cnv)
+                
     def generate_cnvs(self):
         
         script_path = os.path.join(self.spike_in_bam_path, "spikeinbam.py")
@@ -172,6 +186,8 @@ class CNV_Generator():
         logger.info(
             f"Creating bams with in silico CNVs in {self.bams_with_cnv_path}:\n{str_cmd}"
         )
+        if len(os.listdir(self.bams_with_cnv_path)) > 10:
+            return (self.bams_with_cnv_path)
         subprocess.run(cmd)
 
         return self.bams_with_cnv_path

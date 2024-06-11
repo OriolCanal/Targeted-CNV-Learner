@@ -3,19 +3,75 @@ import json
 
 from modules.log import logger
 from modules.CNV_detection_algorithms.CNV_algorithm import CNV_Algorithm
-
+from modules.detected_CNV import Detected_CNV
 
 class Grapes(CNV_Algorithm):
-    def __init__(self, docker_conf, reference_conf, Bed, force_run=False):
+    def __init__(self, docker_conf, reference_conf, Run_class, Bed, force_run=False):
         super().__init__(docker_conf, reference_conf, Bed, force_run)
         self.grapes_image = docker_conf.grapes2["image"]
         self.grapes_version = docker_conf.grapes2["version"]
+        self.Run = Run_class
+        self.run_id = Run_class.run_id
+        self.bams_dir = self.Run.run_path
         self.grapes_dir = os.path.join(self.main_dir, "Grapes")
         self.grapes_results_dir = os.path.join(self.results_dir, "Grapes")
+        self.run_results_dir = os.path.join(self.grapes_results_dir, self.run_id)
         if not os.path.exists(self.grapes_results_dir):
             os.mkdir(self.grapes_results_dir)
+            os.chmod(self.run_results_dir, 0o777)
+        if not os.path.exists(self.run_results_dir):
+            os.mkdir(self.run_results_dir)
+            os.chmod(self.run_results_dir, 0o777)
+        if not os.path.exists(self.grapes_dir):
+            os.mkdir(self.grapes_dir)
+            os.chmod(self.grapes_dir, 0o777)
+        self.input_filename = f"{self.run_id}_grapes_input.txt"
+        self.input_path = os.path.join(self.grapes_dir, self.input_filename)
         
+        self.output_file = os.path.join(self.run_results_dir, "output_dir.all.calls.bed")
+
+    def create_input_file(self):
+        samples_analysed = 0
+        with open(self.input_path, "w") as f:
+            for sample in self.Run.samples_147:
+                if sample.is_outlier is not False:
+                    continue
+                samples_analysed += 1
+                sample_path = os.path.join(
+                    "/bam_vol",
+                    os.path.basename(sample.bam.path)
+                )
+
+                f.write(f"{sample_path}\n")
         
+        if samples_analysed > 1:
+            return True
+        else:
+            return False
+
+    def run_grapes_run_mode(self):
+        if os.path.exists(self.output_file):
+            logger.info(f"GRAPES2 already run for RUN: {self.run_id} as output: {self.output_file} exists")
+            return(True)
+        fasta_dir = os.path.dirname(self.reference_fasta)
+        fasta_filename = os.path.basename(self.reference_fasta)
+        cmd = [
+            self.docker_path, "run",
+            "-v", f"{fasta_dir}:/fasta_dir",
+            "-v", f"{self.run_results_dir}:/output_dir",
+            "-v", f"{self.grapes_dir}:/input_dir",
+            "-v", f"{self.bams_dir}:/bam_vol",
+            "-v", f"{self.Bed.dir}:{self.Bed.volume}",
+            f"{self.grapes_image}:{self.grapes_version}",
+            "grapes2.py", 
+            "--bam_dir", f"/input_dir/{self.input_filename}",
+            "--output_dir", "/output_dir",
+            "--bed", f"{self.Bed.volume}/{self.Bed.grapes_bed_filename}",
+            "--fasta", f"/fasta_dir/{fasta_filename}",
+            "--genome_version", "hg19"
+        ]
+
+        self.run_cmd(cmd, "GRAPES in run mode:")
     def get_grapes_bed(self):
         bed_path = self.Bed.path
 
@@ -76,7 +132,8 @@ class Grapes(CNV_Algorithm):
             "--bed", f"{self.Bed.volume}/{self.Bed.grapes_bed_filename}",
             "--fasta", f"/fasta_dir/{self.fasta_filename}",
             "--genome", "hg19",
-            "--baseline_db", "/grapes_results/grapes2_baseline.db"
+            "--baseline_db", "/grapes_results/grapes2_baseline.db",
+            "--use_baseline"
         ]
 
         # runs_volumes = self.get_runs_volumes(control_samples, analysis_samples)
@@ -139,5 +196,32 @@ class Grapes(CNV_Algorithm):
                 f"/{run_id}/{sample.bam.filename}")
         
         return(sample_docker_path)
+    
+    def parse_dectected_cnvs(self, Bed_obj, sample_id_sample_obj: dict =None):
+        self.output_file = os.path.join(self.run_results_dir, "output_dir.all.calls.bed")
+
+        with open(self.output_file, "r") as f:
+            for line in f:
+                if line.startswith("sample"):
+                    continue
+                line = line.strip().split("\t")
+                sample = line[0].split(".")[0]
+                chr, start, end = line[1], line[2], line[3]
+                info = line[4]
+                infos = info.split(";")
+                for info in infos:
+                    if "=" not in info:
+                        continue
+                    key, value = info.split("=")
+                    if key == "SVTYPE":
+                        svtype = value
+                Detected_Cnv = Detected_CNV(start, end, chr, svtype, sample, None, None, "Grapes2")
+                Detected_Cnv.get_gene_name(Bed_obj)
+                Detected_Cnv.get_numb_exons(Bed_obj)
+
+                if sample_id_sample_obj:
+                    sample_obj = sample_id_sample_obj[sample]
+                    sample_obj.cnvs["grapes2"].append(Detected_Cnv)
+
     
 

@@ -9,7 +9,7 @@ import random
 # from modules.mongo_classes import Sample as Mongo_Sample
 from modules.bed import Bed
 from modules.bam import Bam
-from modules.detected_CNV import In_Silico_CNV
+from modules.detected_CNV import In_Silico_CNV, Detected_CNV
 from modules.CNV_detection_algorithms.CNV_Kit import CNV_Kit
 from modules.CNV_detection_algorithms.decon import Decon
 from modules.CNV_detection_algorithms.gatk_gCNV import Gatk_gCNV, Case_Gatk_gCNV, Cohort_Gatk_gCNV
@@ -41,7 +41,6 @@ Cohort_Picard_Metrics_Df = Metrics_Df()
 
 Analysis_Mosdepth_Metrics_Df = Mosdepth_df(ref_conf)
 Cohort_Mosdepth_Metrics_Df = Cohort_Mosdepth_df(ref_conf)
-print(f"{ref_conf.bed}\n\n\n")
 
 analysis_sample_id_sample_obj = dict()
 cohort_sample_id_sample_obj = dict()
@@ -69,8 +68,13 @@ random.shuffle(runs)
 sample_id_sample_obj = dict()
 for run in runs:
     run_path = os.path.join(ref_conf.bam_dir, run)
-    bams = os.listdir(run_path)
-    if i + len(bams) > num_cohort_samples:
+    bams_bais = os.listdir(run_path)
+    bams = [bam for bam in bams_bais if bam.endswith(".bam")]
+    # runs with less than 4 samples can't be analysed by DECON, so we put in cohort
+    if len(bams) < 4:
+        cohort = True
+        run_list = cohort_runs
+    elif i + len(bams) > num_cohort_samples:
         cohort = False
         run_list = analysis_runs
     else:
@@ -89,11 +93,12 @@ for run in runs:
     
     run_list.add(Run)
 
-for run in cohort_runs:
-    run.put_bams_in_cohort_dir(ref_conf)
-for run in analysis_runs:
-    run.put_bams_in_analysis_dir(ref_conf)
-print(f"cohorts runs: {len(cohort_runs)}")
+# for run in cohort_runs:
+#     run.put_bams_in_cohort_dir(ref_conf)
+# for run in analysis_runs:
+#     run.put_bams_in_analysis_dir(ref_conf)
+
+# print(f"cohorts runs: {len(cohort_runs)}")
 
 # generate in silico cnvs
 CNV_generator = CNV_Generator(Bam.analysis_bam_dir, ref_conf, Bed_obj)
@@ -102,7 +107,7 @@ CNV_generator.create_multiple_exons_config(cnv_type="dup", out_filename="multipl
 CNV_generator.create_single_exons_config(cnv_type="del", out_filename="single_exon_deletion.config")
 CNV_generator.create_single_exons_config(cnv_type="dup", out_filename="single_exon_duplication.config")
 filtered_config = CNV_generator.check_config_overlap()
-print(filtered_config)
+# print(filtered_config)
 # CNVs_bams_dir = CNV_generator.generate_cnvs()
 in_silico_cnvs = In_Silico_CNV.parse_cnvs_config(config_path=filtered_config, sample_id_sample_obj=Sample.sample_id_sample_obj)
 CNV_generator.order_config(by_column=0)
@@ -111,12 +116,17 @@ CNV_generator.order_config(by_column=1)
 CNVs_bams_dir = "/home/ocanal/Desktop/CNV_detection_on_targeted_sequencing/bams_with_cnvs"
 
 for run in analysis_runs:
-    for sample in run.samples_147:
-        sample.bam.set_simulated_bam(CNVs_bams_dir) # Bam path is now the simulated path
 
+    for sample in run.samples_147:
+        run_path = os.path.join(CNVs_bams_dir, run.run_id)
+        if not os.path.exists(run_path):
+            sample.bam.set_simulated_bam(CNVs_bams_dir) # Bam path is now the simulated path
+        else:
+            sample.bam.set_simulated_bam(run_path)
+    run.put_bam_in_run_directory()
 
 for Cohort_Run in cohort_runs:
-    Cohort_Run.create_symbolic_link(ref_conf)
+    # Cohort_Run.put_bam_in_run_directory()
     for Cohort_Sample in Cohort_Run.samples_147:
         print(Cohort_Sample.bam.symbolic_link)
         cohort_sample_id_sample_obj[Cohort_Sample.sample_id] = Cohort_Sample
@@ -182,15 +192,28 @@ analysis_samples = {sample for sample in analysis_samples if sample.is_outlier i
 
 for run in cohort_runs:
     run.put_bams_in_cohort_dir(ref_conf)
-for run in analysis_runs:
-    run.put_bams_in_analysis_dir(ref_conf)
+# for run in analysis_runs:
+#     run.put_bams_in_analysis_dir(ref_conf)
 # GRAPES
 
-# Grapes_obj = Grapes(docker_conf, ref_conf, Bed_obj)
+# for run in analysis_runs:
 
-# Grapes_obj.get_grapes_bed()
-# Grapes_obj.create_baseline(cohort_samples)
-# # GATK gCNV
+
+#     Grapes_obj = Grapes(docker_conf, ref_conf, run, Bed_obj)
+
+
+#     Grapes_obj.get_grapes_bed()
+#     are_samples_to_analyse = Grapes_obj.create_input_file()
+#     # at least we need 2 samples to be analysed
+#     if not are_samples_to_analyse:
+#         continue
+#     Grapes_obj.run_grapes_run_mode()
+#     Grapes_obj.parse_dectected_cnvs(Bed_obj, Sample.sample_id_sample_obj)
+# logger.info(
+#     f"Total amount of CNVs detected by Grapes2 is: {len(Detected_CNV.cnvs["GRAPES2"])}"
+# )
+
+# GATK gCNV
 # force_run = False
 # Gatk_obj = Gatk_gCNV(docker_conf, ref_conf, Bed_obj, force_run)
 # Gatk_obj.run_preprocess_intervals()
@@ -209,29 +232,37 @@ for run in analysis_runs:
 
 
 # CNV_KIT
-# CnvKit = CNV_Kit(docker_conf, ref_conf, Bed_obj)
+CnvKit = CNV_Kit(docker_conf, ref_conf, Bed_obj)
 
-# CnvKit.run_batch_germline_pipeline(cohort_samples, analysis_samples)
-for analysis_run in analysis_runs:
-    # runs with only 1 sample cannot be analysed
-    if not len(analysis_run.samples_147) > 2:
-        continue
-    # RUN DECON
-    Decon_obj = Decon(docker_conf, ref_conf, Bed_obj, analysis_run)
-    Decon_obj.get_input_file()
-    Decon_obj.run_read_in_bams()
-    Decon_obj.run_identify_failed_rois()
-    Decon_obj.run_make_CNVcalls()
-    # for Analysis_Sample in analysis_run.samples_147:
-    #     # RUN GATK
-    #     Gatk_obj.run_collect_read_counts(Analysis_Sample)
-    #     Sample_Case_Gatk_gCNV = Case_Gatk_gCNV(Gatk_Cohort, Analysis_Sample, docker_conf, ref_conf, Bed_obj, force_run)
-    #     Sample_Case_Gatk_gCNV.run_determine_germline_contig_ploidy()
-    #     Sample_Case_Gatk_gCNV.run_germline_cnv_caller()
-    #     Sample_Case_Gatk_gCNV.run_postprocess_germline_calls()
-    #     Sample_Case_Gatk_gCNV.process_detected_cnvs()
+CnvKit.run_batch_germline_pipeline(cohort_samples, analysis_samples)
+CnvKit.parse_detected_cnvs(Bed_obj, Sample.sample_id_sample_obj)
+print(Detected_CNV.cnvs)
+num_cnvs_detected_cnvkit = len(Detected_CNV.cnvs["CNVKIT"])
 
-Decon_obj.parse_DECON_result(Sample)
+logger.info(
+    f"Total amount of CNVs detected by CNVKit is: {num_cnvs_detected_cnvkit}"
+)
+# for analysis_run in analysis_runs:
+#     # runs with only 1 sample cannot be analysed
+#     if not len(analysis_run.samples_147) > 3:
+#         continue
+#     # RUN DECON
+#     Decon_obj = Decon(docker_conf, ref_conf, Bed_obj, analysis_run)
+#     Decon_obj.get_input_file()
+#     Decon_obj.run_read_in_bams()
+#     Decon_obj.run_identify_failed_rois()
+#     Decon_obj.run_make_CNVcalls()
+#     # for Analysis_Sample in analysis_run.samples_147:
+#         # RUN GATK
+#         # Gatk_obj.run_collect_read_counts(Analysis_Sample)
+#         # Sample_Case_Gatk_gCNV = Case_Gatk_gCNV(Gatk_Cohort, Analysis_Sample, docker_conf, ref_conf, Bed_obj, force_run)
+#         # Sample_Case_Gatk_gCNV.run_determine_germline_contig_ploidy()
+#         # Sample_Case_Gatk_gCNV.run_germline_cnv_caller()
+#         # Sample_Case_Gatk_gCNV.run_postprocess_germline_calls()
+#         # Sample_Case_Gatk_gCNV.process_detected_cnvs()
+
+# Decon_obj.parse_DECON_result(Sample.sample_id_sample_obj)
+# print(len(Detected_CNV.cnvs["DECON"]), "heeey")
 # # creating a model for each sample
 # for cluster in cluster_samples.keys():
 #     # Skipping outliers

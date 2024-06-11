@@ -45,6 +45,7 @@ class Decon(CNV_Algorithm):
             logger.info(
                 f"Output of Decon ReadInBams for runID: {self.run_id} already exists: {output_path}"
             )
+            return(True)
         fasta_dir = os.path.dirname(self.reference_fasta)
         fasta_filename = os.path.basename(self.reference_fasta)
 
@@ -66,11 +67,12 @@ class Decon(CNV_Algorithm):
         
     def run_identify_failed_rois(self):
 
-        output_path = os.path.join(self.decon_folder, f"{self.run_id}_failed_rois.txt")
+        output_path = os.path.join(self.decon_folder, f"{self.run_id}_failed_rois_Failures.txt")
         if os.path.exists(output_path):
             logger.info(
                 f"Output of Decon IdentifyFailures for runID: {self.run_id} already exists: {output_path}"
             )
+            return True
         cmd = [
             self.docker_path, "run",
             "-v", f"{self.decon_folder}:/decon_folder",
@@ -80,7 +82,6 @@ class Decon(CNV_Algorithm):
             "--mincorr", "0.98",
             "--mincov", "100",
             "--out", f"/decon_folder/{self.run_id}_failed_rois"
-
         ]
 
         self.run_cmd(cmd, "DECON IdentifyFailures")
@@ -91,6 +92,7 @@ class Decon(CNV_Algorithm):
             logger.info(
                 f"Output of Decon makeCNVcalls for runID: {self.run_id} already exists: {output_path}"
             )
+            return True
         cmd = [
             self.docker_path, "run",
             "-v", f"{self.decon_folder}:/decon_folder",
@@ -105,7 +107,7 @@ class Decon(CNV_Algorithm):
         self.run_cmd(cmd, "DECON makeCNVcalls")
     
 
-    def parse_DECON_result(self, Sample_class=None):
+    def parse_DECON_result(self, sample_id_sample_obj: dict =None):
         output_files = os.listdir(self.decon_results_dir)
         for file in output_files:
             if not file.endswith("all.txt"):
@@ -115,12 +117,14 @@ class Decon(CNV_Algorithm):
                 for i, line in enumerate(f):
                     if i == 0:
                         continue
-                    line.strip().split("\t")
+                    line = line.strip().split("\t")
+                    # print(line[1], "hey")
                     sample =  line[1].split(".")[0]
                     cnv_type, n_exons, start, end, chr, gene = line[6], line[7], line[8], line[9], line[10], line[16]
                     cnv = Detected_CNV(start, end, chr, cnv_type, sample, n_exons, gene, algorithm="DECON")
-                    if Sample_class:
-                        sample_obj = Sample_class.sample_id_sample_obj[sample]
+                    if sample_id_sample_obj:
+                        # print(Sample_class.sample_id_sample_obj)
+                        sample_obj = sample_id_sample_obj[sample]
                         sample_obj.cnvs["decon"].append(cnv)
 
 

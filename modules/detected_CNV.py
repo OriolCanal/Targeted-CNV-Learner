@@ -1,8 +1,9 @@
 import os
 import re
+import pybedtools
 
 class CNV():
-    # all_cnvs = list()
+    all_cnvs = list()
     def __init__(self, start, end, chr, type, sample, algorithm=None, qual=None):
         self.start = start
         self.end = end
@@ -11,7 +12,7 @@ class CNV():
         self.algorithm = algorithm
         self.qual = qual
         self.sample = sample
-        # CNV.all_cnvs.append(self)
+        CNV.all_cnvs.append(self)
 
 
     def get_vcf_line(self):
@@ -26,10 +27,45 @@ class CNV():
                 f.write(vcf_line)
 
 class Detected_CNV(CNV):
-    all_detected_cnvs = list()
-    def __init__(self, start, end, chr, type, sample, numb_exons, gene, algorithm="in_silico", qual=None):
+    cnvs = dict()
+    def __init__(self, start, end, chr, type, sample, numb_exons, gene, algorithm, qual=None):
         super().__init__(start, end, chr, type, sample, algorithm, qual)
-        Detected_CNV.all_detected_cnvs.append(self)
+        self.numb_exons = numb_exons
+        self.gene = gene
+        self.algorithm = algorithm.upper()
+        if self.algorithm not in Detected_CNV.cnvs:
+            Detected_CNV.cnvs[self.algorithm] = list()
+        Detected_CNV.cnvs[self.algorithm].append(self)
+    
+    def __str__(self):
+        return(f"CNV detected by {self.algorithm} in sample {self.sample}, {self.chr}:{self.start}-{self.end}")
+    
+    def __repr__(self) -> str:
+        return(f"CNV detected by {self.algorithm} in sample {self.sample}, {self.chr}:{self.start}-{self.end}")
+   
+    def get_numb_exons(self, Bed):
+        
+        exon_bed = pybedtools.BedTool(Bed.path)
+
+        range_bed = pybedtools.BedTool(f"{self.chr}\t{self.start}\t{self.end}", from_string=True)
+
+        overlapping_exons = exon_bed.intersect(range_bed)
+
+        self.numb_exons = len(overlapping_exons)
+        return(self.numb_exons)
+
+
+    def get_gene_name(self, Bed):
+        exon_bed = pybedtools.BedTool(Bed.path)
+
+        range_bed = pybedtools.BedTool(f"{self.chr}\t{self.start}\t{self.end}", from_string=True)
+
+        intersected = exon_bed.intersect(range_bed)
+
+        gene_name = [interval[3] for interval in intersected]
+
+        self.gene_name = gene_name[0]
+        return(self.gene_name)
 
 
 class In_Silico_CNV(CNV):
@@ -41,7 +77,7 @@ class In_Silico_CNV(CNV):
         self.gene = gene
 
     @staticmethod
-    def parse_cnvs_config(config_path, sample_id_sample_obj=None):
+    def parse_cnvs_config(config_path, sample_id_sample_obj: dict =None):
         with open(config_path, "r") as f:
             for line in f:
                 line = line.strip().split("\t")

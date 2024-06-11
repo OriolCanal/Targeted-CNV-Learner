@@ -1,0 +1,4 @@
+/bam_vol/RB36021.rmdup.simulated.bam
+/bam_vol/RB36018.rmdup.simulated.bam
+/bam_vol/RB36019.rmdup.simulated.bam
+/bam_vol/RB36020.rmdup.simulated.bam

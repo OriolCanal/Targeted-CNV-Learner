@@ -4,7 +4,7 @@ import subprocess
 from modules.log import logger
 
 from modules.CNV_detection_algorithms.CNV_algorithm import CNV_Algorithm
-
+from modules.detected_CNV import Detected_CNV
 class CNV_Kit(CNV_Algorithm):
     def __init__(self, docker_conf, reference_conf, Bed, force_run=False):
         super().__init__(docker_conf, reference_conf, Bed, force_run)
@@ -38,12 +38,14 @@ class CNV_Kit(CNV_Algorithm):
         samples_to_analyse = list()
         for sample in analysis_samples:
             output_filename = sample.bam.filename.replace(".bam", ".call.cns")
-            output_path = os.path.join(self.results_folder, output_filename)
+            output_path = os.path.join(self.resutls_dir, output_filename)
+            # print(output_path)
             if os.path.exists(output_path):
                 logger.info(
                     f"CNVKit won't be run over sample {sample.sample_id} as output already exists: {output_path}"
                 )
                 continue
+            print(output_path)
             samples_to_analyse.append(sample)
 
 
@@ -61,6 +63,8 @@ class CNV_Kit(CNV_Algorithm):
         docker_control_samples = self.get_docker_samples(control_samples)
         docker_control_samples.insert(0, "--normal")
         docker_analysis_samples = self.get_docker_samples(samples_to_analyse)
+        if not docker_analysis_samples:
+            return True
         cmd.extend(runs_volumes)
         cmd.extend(
             [
@@ -72,7 +76,7 @@ class CNV_Kit(CNV_Algorithm):
         cmd.extend(docker_control_samples)
         cmd.extend(
             [
-                f"--targets", f"{self.Bed.volume}/{self.Bed.roi_filename}",
+                f"--targets", f"{self.Bed.volume}/{self.Bed.roi_bed_filename}",
                 "--fasta", f"{fasta_volume}/{fasta_filename}",
                 "--output-reference", f"/cnv_kit_dir/{self.normal_cnn_filename}",
                 "--output-dir", f"/cnv_kit_results/{self.results_folder}"
@@ -202,10 +206,41 @@ class CNV_Kit(CNV_Algorithm):
         sample_docker_path = list()
         for sample in samples:
             run_id = sample.run_id
-            print(f"runid: {run_id}")
             sample_docker_path.append(
                 f"/{run_id}/{sample.bam.filename}")
         
         return(sample_docker_path)
     
 
+    def parse_detected_cnvs(self, Bed_obj, sample_id_sample_obj: dict =None):
+        out_files = os.listdir(self.resutls_dir)
+        calls_files = [os.path.join(self.resutls_dir, out_file) for out_file in out_files if out_file.endswith(".call.cns")]
+
+        for calls_file in calls_files:
+            sample = os.path.basename(calls_file).split(".")[0]
+            print(calls_file)
+            with open(calls_file, "r") as f:
+                for line in f:
+                    if line.startswith("chromosome"):
+                        continue
+                    line = line.strip().split("\t")
+
+                    cn = line[5]
+                    if int(cn) == 2:
+                        continue
+                    chromosome = line[0]
+                    if chromosome == "chrX" or chromosome == "chrY":
+                        continue
+
+                    if int(cn) > 2:
+                        sv_type = "DUP"
+                    elif int(cn) < 2: 
+                        sv_type = "DEL"
+                    
+                    start, end, gene, = line[1], line[2], line[3]
+                    print("cnv found")
+                    cnv =Detected_CNV(start, end, chromosome, sv_type, sample, None, gene, "CNVKit")
+                    cnv.get_numb_exons(Bed_obj)
+                    if sample_id_sample_obj:
+                        sample_obj = sample_id_sample_obj[sample]
+                        sample_obj.cnvs["cnvkit"].append(cnv)

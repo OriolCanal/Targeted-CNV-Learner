@@ -16,8 +16,16 @@ class Analysis_Run():
         self.is_cohort = is_cohort
     
     def put_bams_in_cohort_dir(self, ref_conf):
+        """
+        Create a cohort directory where there will be stored all the cohort bam files
+        """
         if self.is_cohort is True:
             cohort_dir = os.path.join(ref_conf.main_dir, "cohort_bams")
+        else:
+            logger.warning(
+                f"Trying to put bams of run {self.run_id} into cohort_dir, but this run has not \
+                 been specified to be a cohort run!")
+            return(False)
 
         if not os.path.exists(cohort_dir):
             os.mkdir(cohort_dir)
@@ -41,11 +49,16 @@ class Analysis_Run():
 
         
         Bam.set_cohort_bam_dir(cohort_dir)
-
+        # self.run_path = 
     def put_bams_in_analysis_dir(self, ref_conf):
+
         if self.is_cohort is False:
             analysis_dir = os.path.join(ref_conf.main_dir, "analysis_bams")
-
+        else:
+            logger.warning(
+                f"You can't put bam files of a cohort run into analysis directory,"
+            )
+            return(False)
         if not os.path.exists(analysis_dir):
             os.mkdir(analysis_dir)
 
@@ -69,6 +82,44 @@ class Analysis_Run():
 
         
         Bam.set_analysis_bam_dir(analysis_dir)
+    
+    def put_bam_in_run_directory(self):
+
+        for sample in self.samples_147:
+            bam_obj = sample.bam
+            bam_path = bam_obj.path
+            bam_dir = bam_obj.dir
+            # if already in run directory, don't change it
+            # if bam_obj.dir.endswith(self.run_id):
+            #     continue
+            # if run id already is the last directory,
+            if os.path.basename(bam_dir) == self.run_id:
+                # bam_obj.set_bam_new_path(new_bam_path)
+                self.run_path = bam_dir
+                return 0
+            
+            new_dir = os.path.join(bam_obj.dir, self.run_id)
+            if not os.path.exists(new_dir):
+                os.mkdir(new_dir)
+            
+            new_bam_path = os.path.join(new_dir, bam_obj.filename)
+            if os.path.exists(new_bam_path):
+                continue
+            cmd = [
+                "mv", bam_path, new_bam_path
+            ]
+            cmd2 = [
+                "mv", f"{bam_path}.bai", f"{new_bam_path}.bai"
+            ]
+            cmd_str = " ".join(cmd)
+            logger.info(
+                f"Moving bam to run directory:\n{cmd_str}"
+            )
+            subprocess.run(cmd)
+            subprocess.run(cmd2)
+            bam_obj.set_bam_new_path(new_bam_path)
+            self.run_path = new_dir
+
     def create_symbolic_link(self, ref_conf):
         if self.is_cohort:
             self.symbolic_link_dir = os.path.join(ref_conf.main_dir, "cohort_symbolic_link")
@@ -162,7 +213,7 @@ class Sample():
             "gatk": list(),
             "decon": list(),
             "cnvkit": list(),
-            "grapes": list(),
+            "grapes2": list(),
             "in_silico": list()
         }
         Sample.sample_id_sample_obj[self.sample_id] = self

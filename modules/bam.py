@@ -37,7 +37,15 @@ class Bam():
                 f"Bam with CNV simulated does not exist: {simulated_bam_path}"
             )
     
-
+    def set_bam_new_path(self, new_path):
+        if os.path.exists(new_path) and os.path.getsize(new_path) > 0:
+            self.path = new_path
+            self.filename = os.path.basename(new_path)
+            self.dir = os.path.dirname(new_path)
+        else:
+            raise ValueError(
+                f"New Bam path {new_path} does not exist or has not content"
+            )
     @classmethod
     def set_cohort_bam_dir(cls, directory):
         if os.path.isdir(directory):

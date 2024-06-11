@@ -1,0 +1,11 @@
+/bam_vol/RB36936.rmdup.simulated.bam
+/bam_vol/RB36933.rmdup.simulated.bam
+/bam_vol/RB36937.rmdup.simulated.bam
+/bam_vol/RB36886.rmdup.simulated.bam
+/bam_vol/RB36929.rmdup.simulated.bam
+/bam_vol/RB36943.rmdup.simulated.bam
+/bam_vol/RB36946.rmdup.simulated.bam
+/bam_vol/RB36945.rmdup.simulated.bam
+/bam_vol/RB36934.rmdup.simulated.bam
+/bam_vol/RB36944.rmdup.simulated.bam
+/bam_vol/RB36935.rmdup.simulated.bam

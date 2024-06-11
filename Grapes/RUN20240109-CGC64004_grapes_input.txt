@@ -1,0 +1,7 @@
+/bam_vol/RB36254.rmdup.simulated.bam
+/bam_vol/RB36312.rmdup.simulated.bam
+/bam_vol/RB36306.rmdup.simulated.bam
+/bam_vol/RB36311.rmdup.simulated.bam
+/bam_vol/RB36310.rmdup.simulated.bam
+/bam_vol/RB36313.rmdup.simulated.bam
+/bam_vol/RB36308.rmdup.simulated.bam

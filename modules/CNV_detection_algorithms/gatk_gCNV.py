@@ -14,6 +14,8 @@ class Gatk_gCNV(CNV_Algorithm):
         self.gatk_image = docker_conf.gatk["image"]
         self.gatk_version = docker_conf.gatk["version"]
         self.gatk_folder = os.path.join(reference_conf.main_dir, "GATK")
+        if not os.path.exists(self.gatk_folder):
+            os.mkdir(self.gatk_folder)
         self.gatk_read_counts_dirname = "Read_counts"
         self.gatk_read_counts_folder = os.path.join(self.gatk_folder, self.gatk_read_counts_dirname)
         self.mappability_folder = os.path.join(self.gatk_folder, "mappability_track")
@@ -505,15 +507,8 @@ class Case_Gatk_gCNV(Gatk_gCNV):
                 if cnv_type == ".":
                     # not a CNV segment
                     continue
-                chr = fields[0]
-                pos = fields[1]
-                id = fields[2]
-                ref = fields[3]
-                qual = fields[5]
-                filter = fields[6]
-                end = fields[7].replace("END=", "")
-                format = fields[8]
-                other = fields[9]
+                chr, pos, id, ref, qual, filter, end, format, other = line
+                end.replace("END=", "")
                 cnv = Detected_CNV(chr=chr, start=pos, end=end, type=cnv_type, sample=self.sample.sample_id, algorithm="GATK_gCNV", qual=qual)
                 self.sample.cnvs["gatk"].append(cnv)
                 # yield(cnv)
