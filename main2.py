@@ -3,6 +3,7 @@ import os
 import sys
 import pandas as pd
 import random
+import matplotlib.pyplot as plt
 # from modules.create_mongo import MongoDBManager
 # from modules.mongo_classes import Variant, Call, MongoDBManager, Annotation
 # from modules.mongo_classes import Run as Mongo_Run
@@ -196,22 +197,23 @@ for run in cohort_runs:
 #     run.put_bams_in_analysis_dir(ref_conf)
 # GRAPES
 
-# for run in analysis_runs:
+for run in analysis_runs:
 
 
-#     Grapes_obj = Grapes(docker_conf, ref_conf, run, Bed_obj)
+    Grapes_obj = Grapes(docker_conf, ref_conf, run, Bed_obj)
 
 
-#     Grapes_obj.get_grapes_bed()
-#     are_samples_to_analyse = Grapes_obj.create_input_file()
-#     # at least we need 2 samples to be analysed
-#     if not are_samples_to_analyse:
-#         continue
-#     Grapes_obj.run_grapes_run_mode()
-#     Grapes_obj.parse_dectected_cnvs(Bed_obj, Sample.sample_id_sample_obj)
-# logger.info(
-#     f"Total amount of CNVs detected by Grapes2 is: {len(Detected_CNV.cnvs["GRAPES2"])}"
-# )
+    Grapes_obj.get_grapes_bed()
+    are_samples_to_analyse = Grapes_obj.create_input_file()
+    # at least we need 2 samples to be analysed
+    if not are_samples_to_analyse:
+        continue
+    Grapes_obj.run_grapes_run_mode()
+    Grapes_obj.parse_dectected_cnvs(Bed_obj, Sample.sample_id_sample_obj)
+grapes_cnvs = len(Detected_CNV.cnvs["GRAPES2"])
+logger.info(
+    f"Total amount of CNVs detected by Grapes2 is: {grapes_cnvs}"
+)
 
 # GATK gCNV
 # force_run = False
@@ -230,28 +232,16 @@ for run in cohort_runs:
 # Gatk_Cohort.run_determine_germline_contig_ploidy()
 # Gatk_Cohort.run_germline_cnv_caller()
 
-
-# CNV_KIT
-CnvKit = CNV_Kit(docker_conf, ref_conf, Bed_obj)
-
-CnvKit.run_batch_germline_pipeline(cohort_samples, analysis_samples)
-CnvKit.parse_detected_cnvs(Bed_obj, Sample.sample_id_sample_obj)
-print(Detected_CNV.cnvs)
-num_cnvs_detected_cnvkit = len(Detected_CNV.cnvs["CNVKIT"])
-
-logger.info(
-    f"Total amount of CNVs detected by CNVKit is: {num_cnvs_detected_cnvkit}"
-)
-# for analysis_run in analysis_runs:
-#     # runs with only 1 sample cannot be analysed
-#     if not len(analysis_run.samples_147) > 3:
-#         continue
-#     # RUN DECON
-#     Decon_obj = Decon(docker_conf, ref_conf, Bed_obj, analysis_run)
-#     Decon_obj.get_input_file()
-#     Decon_obj.run_read_in_bams()
-#     Decon_obj.run_identify_failed_rois()
-#     Decon_obj.run_make_CNVcalls()
+for analysis_run in analysis_runs:
+    # runs with only 1 sample cannot be analysed
+    if not len(analysis_run.samples_147) > 3:
+        continue
+    # RUN DECON
+    Decon_obj = Decon(docker_conf, ref_conf, Bed_obj, analysis_run)
+    Decon_obj.get_input_file()
+    Decon_obj.run_read_in_bams()
+    Decon_obj.run_identify_failed_rois()
+    Decon_obj.run_make_CNVcalls()
 #     # for Analysis_Sample in analysis_run.samples_147:
 #         # RUN GATK
 #         # Gatk_obj.run_collect_read_counts(Analysis_Sample)
@@ -261,7 +251,18 @@ logger.info(
 #         # Sample_Case_Gatk_gCNV.run_postprocess_germline_calls()
 #         # Sample_Case_Gatk_gCNV.process_detected_cnvs()
 
-# Decon_obj.parse_DECON_result(Sample.sample_id_sample_obj)
+# CNV_KIT
+CnvKit = CNV_Kit(docker_conf, ref_conf, Bed_obj)
+
+CnvKit.run_batch_germline_pipeline(cohort_samples, analysis_samples)
+CnvKit.parse_detected_cnvs(Bed_obj, Sample.sample_id_sample_obj)
+
+num_cnvs_detected_cnvkit = len(Detected_CNV.cnvs["CNVKIT"])
+
+logger.info(
+    f"Total amount of CNVs detected by CNVKit is: {num_cnvs_detected_cnvkit}"
+)
+Decon_obj.parse_DECON_result(Sample.sample_id_sample_obj)
 # print(len(Detected_CNV.cnvs["DECON"]), "heeey")
 # # creating a model for each sample
 # for cluster in cluster_samples.keys():
@@ -280,59 +281,130 @@ logger.info(
 #         bams.append(sample.bam.path)
 #     print(f"bams of cluster {cluster}:\n {bams}")
 
-# mosdepth_excel_path = os.path.join(ref_conf.main_dir, "mosdepth_excel.xlsx")
-# exons_mean_coverage_df = Mosdepth_Metrics_Df.get_df_from_normalized_exons_coverage()
-# logger.info(f"Creating mosdepth coverage dataframe in {mosdepth_excel_path}")
-# exons_mean_coverage_df.to_excel(mosdepth_excel_path, index=False)
+grapes_trues = 0
+grapes_falses = 0
+grapes_overlap = list()
+in_silico_overlap_grapes = list()
+cnvkit_trues = 0
+cnvkit_falses = 0
+cnvkit_overlap = list()
+in_silico_overlap_cnvkit = list()
+decon_trues = 0
+decon_falses = 0
+decon_overlap = list()
+in_silico_overlap_decon = list()
+for sample in analysis_samples:
+    sample.check_sample_overlap_cnv()
+    for cnv in sample.cnvs["grapes2"]:
+        if cnv.true_positive_cnv is True:
+            grapes_trues +=1
+            in_silico_overlap_grapes.append(cnv.in_silico_cnv.algorithms_overlap["grapes2"])
+        else:
+            grapes_falses += 1
+            print(cnv)
+        grapes_overlap.append(cnv.overlap_percentage)
+    for cnv in sample.cnvs["decon"]:
+        if cnv.true_positive_cnv is True:
+            decon_trues += 1
+            in_silico_overlap_decon.append(cnv.in_silico_cnv.algorithms_overlap["decon"])
 
-# # heatmap_path = os.path.join(ref_conf.main_dir, "Mosdepth_heatmap.png")
-# Mosdepth_Metrics_Df.apply_pca(normalized=True)
-# # closes_points = Mosdepth_Metrics_Df.get_n_pca_closest_samples("RB36157", n=5)
-# Mosdepth_Metrics_Df.apply_umap(normalized=True)
-# Cluster_Pca = Clustering_Mosdepth(Mosdepth_Metrics_Df, "PCA", ref_conf)
-# # Cluster_Pca.apply_bayesian_gaussian_mixture()
-# # Cluster_Pca.do_hierarchical_clustering()
-# Cluster_Pca.apply_hdbscan(min_samples=15, min_cluster_size=5)
+        else:
+            decon_falses += 1
+        decon_overlap.append(cnv.overlap_percentage)
 
-# Cluster_Umap = Clustering_Mosdepth(Mosdepth_Metrics_Df, "UMAP", ref_conf)
-# # Cluster_Umap.apply_bayesian_gaussian_mixture()
-# # Cluster_Umap.do_hierarchical_clustering()
-# Cluster_Umap.apply_hdbscan(min_samples=15, min_cluster_size=3)
+    for cnv in sample.cnvs["cnvkit"]:
+        if cnv.true_positive_cnv is True:
+            cnvkit_trues += 1
+            in_silico_overlap_cnvkit.append(cnv.in_silico_cnv.algorithms_overlap["cnvkit"])
 
-# cluster_samples = Cluster_Pca.get_hdbscan_cluster_samples(analysis_samples)
+        else:
+            cnvkit_falses += 1
+        cnvkit_overlap.append(cnv.overlap_percentage)
+plt.figure(figsize=(10, 6))
 
-# # if force_run = True, if output file of gatk exists, the command will run and the file will be overwritten
-# force_run = False
-# # # Run GATK gCNV
-# Picard_Obj.run_bed_to_interval_list(Bed_obj)
-# Gatk_obj = Gatk_gCNV(docker_conf, ref_conf, Bed_obj, force_run)
-# Gatk_obj.run_preprocess_intervals()
-# Gatk_obj.run_index_feature_file()
-# Gatk_obj.run_annotate_intervals()
+# Plot histogram for data1
+plt.hist(grapes_overlap, bins=10, alpha=0.5, color='blue', label='grapes_detected_cnv_overlap', edgecolor='black')
 
-# # creating hdf5 file for each sample
-# for sample in analysis_samples.values():
+# Plot histogram for data2
+plt.hist(in_silico_overlap_grapes, bins=10, alpha=0.5, color='red', label='in_silico_cnv_overlap', edgecolor='black')
 
-#     Bam_Obj = sample.bam
-#     Gatk_obj.run_collect_read_counts(Bam_Obj)
+# Add labels and title
+plt.xlabel('percentage of overlap in grapes 2')
+plt.ylabel('Frequency')
+plt.title('Histogram of Two Overlapping Distributions')
+plt.legend(loc='upper right')
+grapes_plot = os.path.join(ref_conf.main_dir, "Plots", "grapes_vs_in_silico.png")
+plt.savefig(grapes_plot)
+print(grapes_overlap)
 
-# # creating a model for each sample
-# for cluster in cluster_samples.keys():
-#     if cluster == -1:
-#         continue
-#     cohort_samples = cluster_samples[cluster]
-#     print(cohort_samples)
-#     bams = list()
-#     for sample in cohort_samples:
-#         Gatk_obj.run_filter_intervals(sample, cohort_samples)
-#         Gatk_obj.run_interval_list_tools()
-#         Gatk_obj.run_filter_intervals(sample, cohort_samples)
-#         Gatk_Cohort = Cohort_Gatk_gCNV(sample, docker_conf, ref_conf, Bed_obj, cohort_samples, force_run)
-#         Sample_Case_Gatk_gCNV = Case_Gatk_gCNV(sample, docker_conf, ref_conf, Bed_obj, force_run)
-#         Gatk_Cohort.run_determine_germline_contig_ploidy(sample)
-#         Sample_Case_Gatk_gCNV.run_determine_germline_contig_ploidy(Gatk_Cohort)
-#         Gatk_Cohort.run_germline_cnv_caller(sample)
-#         Sample_Case_Gatk_gCNV.run_germline_cnv_caller(Gatk_Cohort)
-#         Sample_Case_Gatk_gCNV.run_postprocess_germline_calls(Gatk_Cohort)
-#         bams.append(sample.bam.path)
-#     print(f"bams of cluster {cluster}:\n {bams}")
+# Show the plot
+plt.show()
+
+plt.figure(figsize=(10, 6))
+
+# Plot histogram for data1
+plt.hist(decon_overlap, bins=10, alpha=0.5, color='blue', label='decon_detected_cnv_overlap', edgecolor='black')
+
+# Plot histogram for data2
+plt.hist(in_silico_overlap_decon, bins=10, alpha=0.5, color='red', label='in_silico_cnv_overlap', edgecolor='black')
+
+# Add labels and title
+plt.xlabel('percentage of overlap in decon')
+plt.ylabel('Frequency')
+plt.title('Histogram of Two Overlapping Distributions')
+plt.legend(loc='upper right')
+decon_plot = os.path.join(ref_conf.main_dir, "Plots", "decon_vs_in_silico.png")
+plt.savefig(decon_plot)
+# Show the plot
+plt.show()
+
+
+
+plt.figure(figsize=(10, 6))
+
+# Plot histogram for data1
+plt.hist(cnvkit_overlap, bins=10, alpha=0.5, color='blue', label='cnvkit_detected_cnv_overlap', edgecolor='black')
+
+# Plot histogram for data2
+plt.hist(in_silico_overlap_cnvkit, bins=10, alpha=0.5, color='red', label='in_silico_cnv_overlap', edgecolor='black')
+
+# Add labels and title
+plt.xlabel('percentage of overlap in cnvkit')
+plt.ylabel('Frequency')
+plt.title('Histogram of Two Overlapping Distributions')
+plt.legend(loc='upper right')
+cnvkit_plot = os.path.join(ref_conf.main_dir, "Plots", "cnvkit_vs_in_silico.png")
+plt.savefig(cnvkit_plot)
+# Show the plot
+plt.show()
+
+print(
+    f"Decon positives cnvs {decon_trues}, decon negatives cnvs {decon_falses}"
+)
+
+print(
+    f"cnvkit positives cnvs {cnvkit_trues}, cnvkit negatives cnvs {cnvkit_falses}"
+)
+print(
+    f"grapes positives cnvs {grapes_trues}, grapes negatives cnvs {grapes_falses}"
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

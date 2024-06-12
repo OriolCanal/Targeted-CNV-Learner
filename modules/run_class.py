@@ -2,6 +2,7 @@
 import os
 import subprocess
 import shutil
+import matplotlib.pyplot as plt
 
 from modules.log import logger
 from modules.mongo_classes import Sample
@@ -228,8 +229,85 @@ class Sample():
         
         return(all_cnvs)
     
+    def check_sample_overlap_cnv(self):
+        threshold = 15
+        for in_silico_cnv in self.cnvs["in_silico"]:
+            for decon_cnv in self.cnvs["decon"]:
+                if in_silico_cnv.chr != decon_cnv.chr:
+                    continue
+                
+                if in_silico_cnv.start > decon_cnv.end or decon_cnv.start > in_silico_cnv.end:
+                    continue
 
+                if in_silico_cnv.end < decon_cnv.start or decon_cnv.end < in_silico_cnv.start:
+                    continue
 
+                in_silico_overlap, decon_overlap = in_silico_cnv.calculate_overlap_percentage(decon_cnv)
+                in_silico_cnv.algorithms_overlap["decon"] = in_silico_overlap
+                decon_cnv.overlap_percentage = decon_overlap
+                if float(in_silico_overlap) > threshold and float(decon_overlap) > threshold:
+                    in_silico_cnv.algorithms_detected.add("decon")
+                    decon_cnv.set_in_silico_cnv(in_silico_cnv)
+
+            for grapes_cnv in self.cnvs["grapes2"]:
+                if in_silico_cnv.chr != grapes_cnv.chr:
+                    continue
+                
+                if in_silico_cnv.start > grapes_cnv.end or grapes_cnv.start > in_silico_cnv.end:
+                    continue
+
+                if in_silico_cnv.end < grapes_cnv.start or grapes_cnv.end < in_silico_cnv.start:
+                    continue
+
+                in_silico_overlap, grapes_overlap = in_silico_cnv.calculate_overlap_percentage(grapes_cnv)
+                in_silico_cnv.algorithms_overlap["grapes2"] = in_silico_overlap
+                grapes_cnv.overlap_percentage = grapes_overlap
+                if float(in_silico_overlap) > threshold and float(grapes_overlap) > threshold:
+                    in_silico_cnv.algorithms_detected.add("grapes2")
+                    grapes_cnv.overlap = grapes_overlap
+                    grapes_cnv.set_in_silico_cnv(in_silico_cnv)
+                    
+                
+
+            for cnvkit_cnv in self.cnvs["cnvkit"]:
+                if in_silico_cnv.chr != cnvkit_cnv.chr:
+                    continue
+                
+                if in_silico_cnv.start > cnvkit_cnv.end or cnvkit_cnv.start > in_silico_cnv.end:
+                    continue
+
+                if in_silico_cnv.end < cnvkit_cnv.start or cnvkit_cnv.end < in_silico_cnv.start:
+                    continue
+
+                in_silico_overlap, cnvkit_overlap = in_silico_cnv.calculate_overlap_percentage(cnvkit_cnv)
+                in_silico_cnv.algorithms_overlap["cnvkit"] = in_silico_overlap
+                cnvkit_cnv.overlap_percentage = cnvkit_overlap
+                if float(in_silico_overlap) > threshold and float(cnvkit_overlap) > threshold:
+                    in_silico_cnv.algorithms_detected.add("cnvkit")
+                    cnvkit_cnv.set_in_silico_cnv(in_silico_cnv)
+    
+    
+    # def plot_overlap_histograms(self, in_silico_overlaps, algorithm_overlaps, algorithm_name="Algorithm", ref_conf=None):
+
+    #     plt.figure(figsize=(10, 6))
+
+    #     plt.hist(in_silico_overlaps, bins=20, alpha=0.5, label='In Silico Overlap')
+    #     plt.hist(algorithm_overlaps, bins=20, alpha=0.5, label=f'{algorithm_name} Overlap')
+
+    #     plt.xlabel('Overlap Percentage')
+    #     plt.ylabel('Frequency')
+    #     plt.title('Histogram of Overlap Percentages')
+    #     plt.legend(loc='upper right')
+    #     plt.grid(True)
+    #     if ref_conf:
+    #         plots_dir =  os.path.join(ref_conf.main_dir, "Plots", "overlap_cnv")
+    #         if not os.path.exists(plots_dir):
+    #             os.mkdir(plots_dir)
+    #         plot_path = os.path.join(plots_dir, f"In_silico_vs_{algorithm_name}_overlap.png")
+    #         plt.savefig(plot_path)
+    #     plt.show()
+
+        
     def set_cnv_kit_vcf(self, cnv_kit_vcf_path):
         if os.path.isfile(cnv_kit_vcf_path):
             self.cnv_kit_vcf_path = cnv_kit_vcf_path
