@@ -63,7 +63,7 @@ class CNV_Kit(CNV_Algorithm):
         docker_control_samples = self.get_docker_samples(control_samples)
         docker_control_samples.insert(0, "--normal")
         docker_analysis_samples = self.get_docker_samples(samples_to_analyse)
-        if not docker_analysis_samples:
+        if not docker_analysis_samples or len(docker_analysis_samples) < 2:
             return True
         cmd.extend(runs_volumes)
         cmd.extend(
@@ -218,7 +218,7 @@ class CNV_Kit(CNV_Algorithm):
 
         for calls_file in calls_files:
             sample = os.path.basename(calls_file).split(".")[0]
-            print(calls_file)
+            # print(calls_file)
             with open(calls_file, "r") as f:
                 for line in f:
                     if line.startswith("chromosome"):
@@ -238,7 +238,7 @@ class CNV_Kit(CNV_Algorithm):
                         sv_type = "DEL"
                     
                     start, end, gene, = line[1], line[2], line[3]
-                    print("cnv found")
+                    # print("cnv found")
                     cnv =Detected_CNV(start, end, chromosome, sv_type, sample, None, gene, "CNVKit")
                     cnv.get_numb_exons(Bed_obj)
                     if sample_id_sample_obj:

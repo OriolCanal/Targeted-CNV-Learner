@@ -215,7 +215,9 @@ class Grapes(CNV_Algorithm):
                     key, value = info.split("=")
                     if key == "SVTYPE":
                         svtype = value
-                Detected_Cnv = Detected_CNV(start, end, chr, svtype, sample, None, None, "Grapes2")
+                    if key == "CNV_SCORE":
+                        qual = value
+                Detected_Cnv = Detected_CNV(start, end, chr, svtype, sample, None, None, "Grapes2", qual)
                 Detected_Cnv.get_gene_name(Bed_obj)
                 Detected_Cnv.get_numb_exons(Bed_obj)
 

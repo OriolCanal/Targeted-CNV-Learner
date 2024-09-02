@@ -1,0 +1,294 @@
+\ProvidesPackage{thesis-style}
+
+
+% Fonts, codificació, etc.
+
+\usepackage[catalan]{babel}                 % escriure en català principalment
+%\usepackage{aecompl}                       % això no cal si no es fa servir el tipus de lletra predeterminat
+\usepackage{amsmath}                        % AMS Math
+%\usepackage{amssymb}                       % no cal si fem el \usepackage[bitstream-charter]{mathdesign}
+\usepackage[T1]{fontenc}                    % font encoding (T1)
+\usepackage[utf8]{inputenc}                 % input encoding (UTF-8)
+\usepackage[bitstream-charter]{mathdesign}  % font (Bitstream Charter)
+
+
+% Format de pàgina
+
+\usepackage[left=1.5in, right=1.3in, top=1.1in, bottom=1.1in, includefoot, includehead, headheight=14.5pt]{geometry}    % marges
+\renewcommand{\baselinestretch}{1.05}                                                                                   % espaiat entre línies (normal * 1.05)
+
+
+% Índexs
+
+%\usepackage{minitoc}                            % \minitoc per posar un miniíndex per cada capítol
+%\setcounter{minitocdepth}{2}
+%\setlength{\mtcindent}{15pt}                    % minitoc indent
+\usepackage[nottoc, notlof, notlot]{tocbibind}  % incloure-ho tot a l'índex (not (table of contents, list of figures, list of tables))
+\renewcommand*\listfigurename{Llista de figures}
+\renewcommand*\listtablename{Llista de taules}
+
+
+% Glossari o llista d'abreviatures
+% S'ha de mirar com fer-lo funcionar amb TeXnicCenter + MiKTeX (google printnomenclature not working)
+
+%\usepackage[intoc]{nomencl}                     % nomenclatura (incloure-la a l'índex)
+%\renewcommand{\nomname}{List of abbreviations}  % títol
+%\makenomenclature
+% \nomenclature{symbol}{description}
+
+% Altres
+\usepackage{verbatim}   % \begin{comment}\end{comment}
+
+
+
+
+
+\usepackage{float} % s'ha de posar abans d'hyperref si fem servir hyperref i algorithm
+% hyperref ha de ser l'últim normalment
+% però algorithm ha d'anar després d'hyperref
+
+% My pdf code
+
+\usepackage{ifpdf}
+
+\ifpdf
+  \usepackage[pdftex]{graphicx}
+  \usepackage{epstopdf}
+  \DeclareGraphicsExtensions{.png,.jpg,.pdf,.eps}
+  \DeclareGraphicsRule{.eps}{pdf}{.pdf}{`epstopdf #1}
+  %\usepackage[a4paper,pagebackref,hyperindex=true]{hyperref}
+  \usepackage[pagebackref,hyperindex=true]{hyperref}
+\else
+  \usepackage{graphicx}
+  \DeclareGraphicsExtensions{.ps,.eps}
+  %\usepackage[a4paper,dvipdfm,pagebackref,hyperindex=true]{hyperref}
+  \usepackage[dvipdfm,pagebackref,hyperindex=true]{hyperref}
+\fi
+
+% conversió automàtica de svg a pdf+latex
+% només funciona amb imatges al subdirectori img, però ja està bé
+% s'ha d'afegir --enable-write18 (amb MiKTeX) o -shell-escape (altres) com a opció de pdflatex
+\newcommand{\executeiffilenewer}[3]{%
+\ifnum\pdfstrcmp{\pdffilemoddate{#1}}%
+{\pdffilemoddate{#2}}>0%
+{\immediate\write18{#3}}\fi%
+}
+\newcommand{\includesvg}[1]{%
+\executeiffilenewer{img/#1.svg}{img/#1.pdf}%
+{inkscape -z -D --file=img/#1.svg %
+--export-pdf=img/#1.pdf --export-latex}%
+\input{img/#1.pdf_tex}%
+}
+
+
+\usepackage[space]{cite} % permet tallar les cites com si fossin paraules normals
+                         % space -> l'espai entre cites agrupades és un espai normal en lloc d'un espai petit
+
+
+%\usepackage{showkeys}   %% mostra les etiquetes de les referències a més dels números
+\usepackage[normalem]{ulem}
+
+
+
+\usepackage{setspace} % espaiat de línies
+
+
+\frenchspacing  % perquè no faci doble espai després d'un punt
+
+\graphicspath{{.}{img/}}
+
+% nicer backref links
+\renewcommand*{\backref}[1]{}
+\renewcommand*{\backrefalt}[4]{%
+\ifcase #1 %
+(Not cited.)%
+\or
+(Cited on page~#2.)%
+\else
+(Cited on pages~#2.)%
+\fi}
+\renewcommand*{\backrefsep}{, }
+\renewcommand*{\backreftwosep}{ and~}
+\renewcommand*{\backreflastsep}{ and~}
+
+% Links in pdf
+\usepackage{color}
+\definecolor{linkcol}{rgb}{0,0,0.4} 
+\definecolor{citecol}{rgb}{0.5,0,0} 
+
+% Change this to change the informations included in the pdf file
+
+% See hyperref documentation for information on those parameters
+
+\hypersetup
+{
+bookmarksopen=true,
+%pdftitle={Title},
+%pdfauthor={Author},
+%pdfsubject="Creation of atlases and atlas based segmentation", %subject of the document
+%pdftoolbar=false, % toolbar hidden
+pdfmenubar=true, %menubar shown
+pdfhighlight=/O, %effect of clicking on a link
+colorlinks=true, %couleurs sur les liens hypertextes
+pdfpagemode=UseOutlines , %aucun mode de page
+pdfpagelayout=OneColumn, %ouverture en simple page
+pdfstartview=XYZ null null 1,
+pdffitwindow=true, %pages ouvertes entierement dans toute la fenetre
+linkcolor=linkcol, %couleur des liens hypertextes internes
+citecolor=citecol, %couleur des liens pour les citations
+urlcolor=linkcol %couleur des liens pour les url
+}
+
+\urlstyle{same}
+
+% definitions.
+% -------------------
+
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{2}
+
+% Some useful commands and shortcut for maths:  partial derivative and stuff
+
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\def\abs{\operatorname{abs}}
+\def\argmax{\operatornamewithlimits{arg\,max}}
+\def\argmin{\operatornamewithlimits{arg\,min}}
+\def\diag{\operatorname{Diag}}
+\newcommand{\eqRef}[1]{(\ref{#1})}
+\def\erf{\operatorname{erf}}
+
+\usepackage{rotating}                    % Sideways of figures & tables
+%\usepackage{bibunits}
+%\usepackage[sectionbib]{chapterbib}          % Cross-reference package (Natural BiB)
+%\usepackage{natbib}                  % Put References at the end of each chapter
+                                         % Do not put 'sectionbib' option here.
+                                         % Sectionbib option in 'natbib' will do.
+\usepackage{fancyhdr}                    % Fancy Header and Footer
+
+% \usepackage{txfonts}                     % Public Times New Roman text & math font
+  
+%%% Fancy Header %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Fancy Header Style Options
+
+\pagestyle{fancy}                       % Sets fancy header and footer
+\fancyfoot{}                            % Delete current footer settings
+
+%\renewcommand{\chaptermark}[1]{         % Lower Case Chapter marker style
+%  \markboth{\chaptername\ \thechapter.\ #1}}{}} %
+
+%\renewcommand{\sectionmark}[1]{         % Lower case Section marker style
+%  \markright{\thesection.\ #1}}         %
+
+\fancyhead[LE,RO]{\bfseries\color{black}\thepage}    % Page number (boldface) in left on even
+% pages and right on odd pages
+\fancyhead[RE]{\bfseries\nouppercase{\color{black}\leftmark}}      % Chapter in the right on even pages
+\fancyhead[LO]{\bfseries\nouppercase{\color{black}\rightmark}}     % Section in the left on odd pages
+
+\let\headruleORIG\headrule
+\renewcommand{\headrule}{\color{black} \headruleORIG}
+\renewcommand{\headrulewidth}{1.0pt}
+\usepackage{colortbl}
+\arrayrulecolor{black}
+
+\fancypagestyle{plain}{
+  \fancyhead{}
+  \fancyfoot{}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+\usepackage{algorithm}
+\usepackage[noend]{algorithmic}
+
+%%% Clear Header %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Clear Header Style on the Last Empty Odd pages
+\makeatletter
+
+\def\cleardoublepage{\clearpage\if@twoside \ifodd\c@page\else%
+  \hbox{}%
+  \thispagestyle{empty}%              % Empty header styles
+  \newpage%
+  \if@twocolumn\hbox{}\newpage\fi\fi\fi}
+
+\makeatother
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% Prints your review date and 'Draft Version' (From Josullvn, CS, CMU)
+\newcommand{\reviewtimetoday}[2]{\special{!userdict begin
+    /bop-hook{gsave 20 710 translate 45 rotate 0.8 setgray
+      /Times-Roman findfont 12 scalefont setfont 0 0   moveto (#1) show
+      0 -12 moveto (#2) show grestore}def end}}
+% You can turn on or off this option.
+% \reviewtimetoday{\today}{Draft Version}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+
+\newenvironment{maxime}[1]
+{
+\vspace*{0cm}
+\hfill
+\begin{minipage}{0.5\textwidth}%
+%\rule[0.5ex]{\textwidth}{0.1mm}\\%
+\hrulefill $\:$ {\bf #1}\\
+%\vspace*{-0.25cm}
+\it 
+}%
+{%
+
+\hrulefill
+\vspace*{0.5cm}%
+\end{minipage}
+}
+
+%\let\minitocORIG\minitoc
+%\renewcommand{\minitoc}{\minitocORIG \vspace{1.5em}}
+
+\usepackage{multirow}
+\usepackage{diagbox}
+
+\newenvironment{bulletList}%
+{ \begin{list}%
+	{$\bullet$}%
+	{\setlength{\labelwidth}{25pt}%
+	 \setlength{\leftmargin}{30pt}%
+	 \setlength{\itemsep}{\parsep}}}%
+{ \end{list} }
+
+%\newtheorem{definition}{Définition}
+\renewcommand{\epsilon}{\varepsilon}
+
+% centered page environment
+
+\newenvironment{vcenterpage}
+{\newpage\vspace*{\fill}\thispagestyle{empty}\renewcommand{\headrulewidth}{0pt}}
+{\vspace*{\fill}}
+
+
+
+\setlength{\marginparwidth}{1.2in}
+\let\oldmarginpar\marginpar
+\renewcommand\marginpar[1]{\-\oldmarginpar[\raggedleft\footnotesize #1]%
+{\raggedright\footnotesize #1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Specific file for latex commands
+% Only valid for its directory
+% Unique name => prefix with the first and last letters (in uppercase) of the directory name + original command name
+% They may be linked to a global command in the unification phase!
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%************************************* Theorems
+%%\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition}
+%%\newtheorem{lemma}{Lemma}
+%%\newtheorem{proposition}{Proposition}
+\newtheorem{theorem}{Theorem}
+
+
+
+\newcommand{\HRule}{{\Huge\rule[0.4ex]{\linewidth}{0.2ex}}}
+
+% Raised Rule Command:
+%  Arg 1 (Optional) - How high to raise the rule
+%  Arg 2            - Thickness of the rule
+\newcommand{\raisedrule}[2][0em]{\leaders\hbox{\rule[#1]{1pt}{#2}}\hfill}
+
+
+

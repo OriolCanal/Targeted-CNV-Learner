@@ -120,8 +120,17 @@ class Decon(CNV_Algorithm):
                     line = line.strip().split("\t")
                     # print(line[1], "hey")
                     sample =  line[1].split(".")[0]
-                    cnv_type, n_exons, start, end, chr, gene = line[6], line[7], line[8], line[9], line[10], line[16]
-                    cnv = Detected_CNV(start, end, chr, cnv_type, sample, n_exons, gene, algorithm="DECON")
+                    cnv_type, n_exons, start, end, chr, bayes_factor, gene = line[6], line[7], line[8], line[9], line[10], line[12], line[16]
+                    if cnv_type == "deletion":
+                        cnv_type = "DEL"
+                    elif cnv_type == "duplication":
+                        cnv_type = "DUP"
+                    else:
+                        raise ValueError(
+                            f"CNV type detected by DECON is neither a duplication or deletion. Type is : {cnv_type}"
+                        )
+
+                    cnv = Detected_CNV(start, end, chr, cnv_type, sample, n_exons, gene, algorithm="DECON", qual=bayes_factor)
                     if sample_id_sample_obj:
                         # print(Sample_class.sample_id_sample_obj)
                         sample_obj = sample_id_sample_obj[sample]

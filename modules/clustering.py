@@ -284,6 +284,9 @@ class Clustering_Mosdepth():
         
         return cluster_samples
     
+
+    def get_new_point_cluster(self, point):
+        neigh
     def set_dbscan_cluster_samples(self, cohort_samples):
 
         cluster_samples = dict()

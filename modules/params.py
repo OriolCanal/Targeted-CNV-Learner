@@ -31,6 +31,7 @@ class YamlConfig:
         self.toy_vcf = os.path.join(self.main_dir, config_yaml["mock_vcf"])
         self.bam_dir = os.path.join(self.main_dir, config_yaml["bam_dir"])
         self.bed = os.path.join(self.main_dir, config_yaml["bed_file"])
+        self.detected_cnvs_file = os.path.join(self.main_dir, config_yaml["detected_cnvs_file"])
     def yaml_to_dict(self, yaml_file) -> str:
         """
         Take a valid yaml file and return a dict. Sanity check

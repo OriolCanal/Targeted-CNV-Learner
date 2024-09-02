@@ -1,5 +1,6 @@
 import os
-
+import subprocess
+from modules.log import logger
 class Bed():
     def __init__(
             self,
@@ -38,6 +39,46 @@ class Bed():
         self.grapes_bed_filename = os.path.basename(self.grapes_bed_path)
         
         self.volume = "/bed_dir"
+
+    def get_gene_names(self):
+        sorted_roi = self.sort_roi_bed()
+        gene_names = set()
+        with open(sorted_roi, "r") as f:
+            for line in f:
+                gene_name = line.split("\t")[3]
+                print(gene_name)
+                gene_names.add(gene_name.strip())
+        
+        self.gene_names = list(gene_names)
+
+        return(self.gene_names)
+
+    def sort_roi_bed(self):
+        self.sorted_roi_filename = f"sorted_{self.roi_bed_filename}"
+        self.sorted_roi = os.path.join(self.dir, self.sorted_roi_filename)
+        if os.path.exists(self.sorted_roi):
+            logger.info(
+                f"sorted bed file already exists: {self.sorted_roi}"
+            )
+            return self.sorted_roi
+        cmd = [
+            "sort",
+            "-k1,1",
+            "-k2,2n",
+            "-k3,3n",
+            "-o",
+            self.sorted_roi,
+            self.roi_bed,
+
+        ]
+        cmd_str = " ".join(cmd)
+        logger.info(
+            f"Sorting bed file:\n {cmd_str}"
+        )
+        subprocess.run(cmd)
+
+        return(self.sorted_roi)
+
 
     def get_interval_list_path(self):
         if self.interval_list_path:

@@ -36,6 +36,7 @@ class Mosdepth():
         self.mosdepth_version = docker_conf.mosdepth["version"]
         self.thresholds = [1, 10, 20, 30, 50, 70, 100, 150, 200, 300, 500, 700, 1000, 2000, 5000]
 
+        self.autosomal_chromosomes = ["chrX", "chrY"]
 
     def run_mosdepth(self, bam_file, force=False):
 
@@ -103,7 +104,6 @@ class Mosdepth():
         bed_filename = os.path.basename(self.bed_with_thresholds_path)
         sample_name = bed_filename.split(".")[0]
         exon_coverage = dict()
-
         with gzip.open(self.bed_with_thresholds_path, "rb") as f:
             for line in f:
                 line = line.strip().decode()
@@ -113,6 +113,8 @@ class Mosdepth():
                     header = line.split("\t")
                 values = line.split("\t")
                 chr = values[0]
+                if chr in self.autosomal_chromosomes:
+                    continue
                 start = values[1]
                 end = values[2]
                 info = values[3]
@@ -163,6 +165,8 @@ class Mosdepth():
                     header = line.split("\t")
                 values = line.split("\t")
                 chr = values[0]
+                if chr in self.autosomal_chromosomes:
+                    continue
                 start = values[1]
                 end = values[2]
                 exon_length = int(end) -1 - int(start)
@@ -237,6 +241,8 @@ class Mosdepth_df():
 class Cohort_Mosdepth_df(Mosdepth_df):
     def __init__(self, ref_conf):
         super().__init__(ref_conf)
+
+
 
     def apply_pca(self, normalized=True):
         self.pca_plot_dir = os.path.join(self.plot_dir, "PCA")
@@ -328,48 +334,135 @@ class Analysis_Mosdepth_df(Mosdepth_df):
 
 
 class Joined_Mosdepth_Df(Mosdepth_df):
-    def __init__(self, ref_conf, cohort_df, analysis_df):
+    def __init__(self, ref_conf, cohort_df_pca, analysis_df_pca, cohort_df, analysis_df):
         super().__init__(ref_conf)
+        self.cohort_df_pca = cohort_df_pca
+        self.analysis_df_pca = analysis_df_pca
         self.cohort_df = cohort_df
         self.analysis_df = analysis_df
         self.join_dfs()
 
     def join_dfs(self):
-        self.cohort_df["sample_type"] = "cohort"
-        self.analysis_df["sample_type"] = "analysis"
-        self.joined_df = pd.concat([self.cohort_df, self.analysis_df], axis=0)
+        self.cohort_df_pca["sample_type"] = "cohort"
+        self.analysis_df_pca["sample_type"] = "analysis"
+        self.joined_df_pca = pd.concat([self.cohort_df_pca, self.analysis_df_pca], axis=0)
         self.pca_plot_dir = os.path.join(self.plot_dir, "PCA")
         if not os.path.exists(self.pca_plot_dir):
             os.mkdir(self.pca_plot_dir)
-        pca_plot_path = os.path.join(self.pca_plot_dir, "cohort_analysis_normalized_pca.html")
+        # pca_plot_path = os.path.join(self.pca_plot_dir, "cohort_analysis_normalized_pca.html")
 
-        logger.info(f"Creating PCA plot of combined cohort and analysis samples in: {pca_plot_path}")
-        # Visualize the PCA result
+        # logger.info(f"Creating PCA plot of combined cohort and analysis samples in: {pca_plot_path}")
+        # # Visualize the PCA result
         
-        custom_palette = px.colors.qualitative.Vivid
+        # custom_palette = px.colors.qualitative.Vivid
 
-        # Create an interactive scatter plot with color based on run_id and hover information showing sample_id
-        fig = px.scatter(self.joined_df, x='PC1', y='PC2', color="sample_type", hover_data=['sample_id'], title='PCA Result', color_discrete_sequence=custom_palette)
+        # # Create an interactive scatter plot with color based on run_id and hover information showing sample_id
+        # fig = px.scatter(self.joined_df, x='PC1', y='PC2', color="sample_type", hover_data=['sample_id'], title='PCA Result', color_discrete_sequence=custom_palette)
 
-        # Update layout to show grid
-        fig.update_layout(
-            xaxis=dict(title='Principal Component 1'),
-            yaxis=dict(title='Principal Component 2'),
-            hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
-            hovermode='closest',
-        )
-        fig.write_html(pca_plot_path)
-    
+        # # Update layout to show grid
+        # fig.update_layout(
+        #     xaxis=dict(title='Principal Component 1'),
+        #     yaxis=dict(title='Principal Component 2'),
+        #     hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
+        #     hovermode='closest',
+        # )
+        # fig.write_html(pca_plot_path)
+    def get_cohort_samples_with_bad_correlation(self, bad_corr_threshold=0.82):
+        exon_columns = self.cohort_df.columns.difference(['mean_coverage', 'sample', 'sample_type'])
+        
+        # Initialize an empty DataFrame to store correlations
+        correlation_df = pd.DataFrame(index=self.cohort_df['sample'], columns=self.cohort_df['sample'])
+        
+        # Iterate through each sample and compute correlation with other samples
+        for i, row_i in self.cohort_df.iterrows():
+            sample_i_coverage = row_i[exon_columns]
+            for j, row_j in self.cohort_df.iterrows():
+                if i == j:
+                    correlation_df.at[row_i['sample'], row_j['sample']] = np.nan
+                else:
+                    sample_j_coverage = row_j[exon_columns]
+                    correlation = sample_i_coverage.corr(sample_j_coverage, method='spearman')
+                    correlation_df.at[row_i['sample'], row_j['sample']] = correlation
+        # print(correlation_df)
+        # Compute the mean correlation for each sample
+        mean_correlations = correlation_df.mean(axis=1, skipna=True)
+        correlation_df['mean_correlation'] = mean_correlations
+        bad_corr_threshold = 0.82
+        self.cohort_bad_correlation_samples = mean_correlations[mean_correlations < bad_corr_threshold].index.tolist()
+        print(self.cohort_bad_correlation_samples, "samples with bad correlation")
+        cohort_bad_correlation_samples_count = (mean_correlations < bad_corr_threshold).sum()
+        correlation_df = correlation_df[correlation_df['mean_correlation'] >= bad_corr_threshold]
+
+        correlation_df = correlation_df.sort_values(by='mean_correlation', ascending=True)
+
+        # print(correlation_df)
+        # print(f"number of samples below {bad_corr_threshold}", bad_correlation_samples_count)
+        return self.cohort_bad_correlation_samples
+
+    def get_sample_correlation(self, sample_id):
+        print(sample_id)
+        if hasattr(self, "bad_correlation_samples"):
+            # Filter out outliers from the cohort_df
+            cohort_df = self.cohort_df[~self.cohort_df['sample'].isin(self.bad_correlation_samples)]
+        else:
+            cohort_df = self.cohort_df
+        # Select the sample row from the analysis DataFrame
+        sample_row = self.analysis_df[self.analysis_df["sample"] == sample_id]
+        print(sample_row)
+        if sample_row.empty:
+            raise ValueError(f"Sample ID {sample_id} not found in analysis DataFrame.")
+
+        # Extract exon columns
+        exon_columns = cohort_df.columns.difference(['mean_coverage', 'sample', 'sample_type'])
+
+        # Extract the exonic coverage of the sample
+        sample_exon_coverage = sample_row[exon_columns].iloc[0]
+
+        # Compute correlations of the sample with each of the cohort samples
+        correlations = []
+        for _, row in self.cohort_df.iterrows():
+            cohort_exon_coverage = row[exon_columns]
+            correlation = sample_exon_coverage.corr(cohort_exon_coverage, method='spearman')
+            # print(correlation)
+            correlations.append(correlation)
+
+        # Calculate the mean correlation
+        mean_correlation = sum(correlations) / len(correlations)
+        print(mean_correlation)
+        return mean_correlation
+
+        # sample_row = self.analysis_df[self.analysis_df["sample"] == sample_id]
+        # cohort_df = pd.concat([cohort_df, sample_row], ignore_index=True)
+        # samples_ids = cohort_df.pop("sample").tolist()
+        # mean_cov = cohort_df.pop("mean_coverage").tolist()
+        # sample_type = cohort_df.pop("sample_type").tolist()
+        # data_corr = cohort_df.T.corr(method='spearman') 
+        # print(data_corr)
+        
+        # data_corr["sample_id"] = samples_ids
+        # print(data_corr)
+        # row = data_corr[data_corr["sample_id"] == sample_id]
+        return(row)
+
+    def get_outliers_ids(self) -> list:
+        if hasattr(self, "outliers"):
+            return(self.outliers["sample_id"].tolist())
+        else:
+            return(None)
     def detect_outliers(self, z_score_threshold):
-        self.joined_df['PC1_zscore'] = (self.joined_df['PC1'] - self.joined_df['PC1'].mean()) / self.joined_df['PC1'].std()
-        self.joined_df['PC2_zscore'] = (self.joined_df['PC2'] - self.joined_df['PC2'].mean()) / self.joined_df['PC2'].std()
-        self.outliers = self.joined_df[(np.abs(self.joined_df['PC1_zscore']) > z_score_threshold) | (np.abs(self.joined_df['PC2_zscore']) > z_score_threshold)]
+        self.joined_df_pca['PC1_zscore'] = (self.joined_df_pca['PC1'] - self.joined_df_pca['PC1'].mean()) / self.joined_df_pca['PC1'].std()
+        self.joined_df_pca['PC2_zscore'] = (self.joined_df_pca['PC2'] - self.joined_df_pca['PC2'].mean()) / self.joined_df_pca['PC2'].std()
+        self.outliers = self.joined_df_pca[(np.abs(self.joined_df_pca['PC1_zscore']) > z_score_threshold) | (np.abs(self.joined_df_pca['PC2_zscore']) > z_score_threshold)]
         
-        pca_plot_path = os.path.join(self.pca_plot_dir, "outliers_pca.html")
-    
-        # Create an interactive scatter plot
-        fig = px.scatter(self.joined_df, x='PC1', y='PC2', hover_data=['sample_id'], title='PCA Result')
+        # Add a column to flag outliers
+        self.joined_df_pca['is_outlier'] = np.where((np.abs(self.joined_df_pca['PC1_zscore']) > z_score_threshold) | (np.abs(self.joined_df_pca['PC2_zscore']) > z_score_threshold), 'Outlier', 'Not Outlier')
 
+        pca_plot_path = os.path.join(self.pca_plot_dir, "outliers_pca.html")
+        logger.info(
+            f"Outlier plot in: {pca_plot_path}"
+        )
+        # Create an interactive scatter plot
+        fig = px.scatter(self.joined_df_pca, x='PC1', y='PC2', color='is_outlier', hover_data=['sample_id'], title='PCA Result', category_orders={'is_outlier': ['Not Outlier', 'Outlier']})
         # Add markers for outliers
         fig.add_trace(px.scatter(self.outliers, x='PC1', y='PC2', hover_data=['sample_id'], color_discrete_sequence=['red']).data[0])
 
@@ -380,10 +473,13 @@ class Joined_Mosdepth_Df(Mosdepth_df):
             hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
             hovermode='closest',
         )
-
+        pca_plot_path2 = pca_plot_path.replace(".html", ".png")
+        fig.write_image(pca_plot_path2)
         # Save or display the plot
         fig.write_html(pca_plot_path)
+        
 
+        return(self.outliers)
     def assign_sample_outliers(self, analysis_sample_id_sample_obj, cohort_sample_id_sample_obj):
         logger.info(f"outliers detected:\n {self.outliers}")
         for index, row in self.outliers.iterrows():
@@ -413,7 +509,7 @@ class Joined_Mosdepth_Df(Mosdepth_df):
         closest_indices = distances.argsort()[:n]
 
         # Filter the dataframe to get the closest points
-        closest_points = self.cohort_df.iloc[closest_indices]
+        closest_points = self.cohort_df_pca.iloc[closest_indices]
 
         logger.info(f"Closest {n} points to sample {sample_id}:")
         logger.info(closest_points)

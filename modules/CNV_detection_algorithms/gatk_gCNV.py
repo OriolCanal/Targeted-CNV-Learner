@@ -43,6 +43,7 @@ class Gatk_gCNV(CNV_Algorithm):
         if os.path.exists(preprocessed_interval_list) and not self.force_run:
             logger.info(f"{preprocessed_interval_list} already exists, Gatk PreprocessIntervals won't be run")
             self.Bed.set_preprocessed_intervals_list_path(preprocessed_interval_list)
+            return preprocessed_interval_list
         cmd = [
             self.docker_path, "run",
             "-v", f"{fasta_dir}:{fasta_volume}",
@@ -326,7 +327,6 @@ class Cohort_Gatk_gCNV(Gatk_gCNV):
     def run_germline_cnv_caller(self):
 
         self.model = list()
-
         
         scatter_files = self.get_scatters()
 
@@ -410,11 +410,17 @@ class Case_Gatk_gCNV(Gatk_gCNV):
         if not hasattr(self, "model_dir"):
             self.model_dir = os.path.join(self.gatk_folder, self.sample.sample_id)
         
+        print(os.path.exists(os.path.join(self.model_dir, f"{self.caller_prefix}-calls")), "\n\n\nheeey")
         if os.path.exists(os.path.join(self.model_dir, f"{self.caller_prefix}-calls")) and not self.force_run:
             return True
         
         scatter_files = self.get_scatters()
         for i, scatter in enumerate(scatter_files):
+            if os.path.exists(os.path.join(self.model_dir, f"{i}_{self.caller_prefix}-calls")) and not self.force_run:
+                logger.info(
+                    f"GATK GermlineCNVCaller already run for sample: {self.sample.sample_id}"
+                )
+                return True
 
             cmd = [
                 self.docker_path, "run",
@@ -448,7 +454,7 @@ class Case_Gatk_gCNV(Gatk_gCNV):
                 f"GATK already run for sample: {self.sample.sample_id}: {self.segments_vcf_path}"
             )
             self.sample.set_gatk_vcf(self.segments_vcf_path)
-
+            return True
 
         cmd = [
             self.docker_path, "run",
@@ -492,7 +498,7 @@ class Case_Gatk_gCNV(Gatk_gCNV):
 
         self.sample.set_gatk_vcf(self.segments_vcf_path)
     
-    def process_detected_cnvs(self):
+    def process_detected_cnvs(self, Bed_obj):
         """
         It takes the GATK output file and parses it creating CNV objects and assigning them to the 
         corresponding sample object being analysed
@@ -507,9 +513,15 @@ class Case_Gatk_gCNV(Gatk_gCNV):
                 if cnv_type == ".":
                     # not a CNV segment
                     continue
-                chr, pos, id, ref, qual, filter, end, format, other = line
-                end.replace("END=", "")
-                cnv = Detected_CNV(chr=chr, start=pos, end=end, type=cnv_type, sample=self.sample.sample_id, algorithm="GATK_gCNV", qual=qual)
+                # print(line)
+                chr, pos, id, ref, alt, qual, filter, end, format, other = fields
+
+                alt = alt.replace(">", "")
+                alt = alt.replace("<", "")
+                end = end.replace("END=", "")
+                cnv = Detected_CNV(chr=chr, start=pos, end=end, type=alt, sample=self.sample.sample_id, algorithm="GATK_gCNV", qual=qual, gene=None, numb_exons=None)
+                cnv.get_gene_name(Bed_obj)
+                cnv.get_numb_exons(Bed_obj)
                 self.sample.cnvs["gatk"].append(cnv)
                 # yield(cnv)
         

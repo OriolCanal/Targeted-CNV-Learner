@@ -215,23 +215,113 @@ class Sample():
             "decon": list(),
             "cnvkit": list(),
             "grapes2": list(),
-            "in_silico": list()
+            "in_silico": list(),
+            "real_cnv": list()
         }
+        # list to store joined cnvs found by multiple algs
+        self.joined_cnv = list()
         Sample.sample_id_sample_obj[self.sample_id] = self
 
 
-    def get_all_callers_cnvs(self):
+    def get_joined_caller_cnvs(self):
         all_cnvs = list()
-        for key, value in self.cnvs.items():
+        for key, cnv_list in self.cnvs.items():
             if key == "in_silico":
                 continue
-            all_cnvs.extend(value)
+            if key == "real_cnv":
+                continue
+            all_cnvs.extend(cnv_list)
+        return all_cnvs
         
-        return(all_cnvs)
+    
+    def check_calls_overlap(self):
+        all_cnvs = self.get_joined_caller_cnvs()
+        parent = list(range(len(all_cnvs)))
+
+        def find(x):
+            if parent[x] != x:
+                parent[x] = find(parent[x])
+            return parent[x]
+
+        def union(x, y):
+            rootX = find(x)
+            rootY = find(y)
+            if rootX != rootY:
+                parent[rootY] = rootX
+
+        for i, cnv1 in enumerate(all_cnvs):
+            for j, cnv2 in enumerate(all_cnvs):
+                if i >= j:
+                    continue
+                if cnv1.is_overlap_acceptable(cnv2):
+                    union(i, j)
+
+        groups = {}
+        for i in range(len(all_cnvs)):
+            root = find(i)
+            if root not in groups:
+                groups[root] = []
+            groups[root].append(all_cnvs[i])
+
+        return(groups)
+
+
+    def check_sample_joined_cnv_overlap(self):
+        threshold = 15
+        for in_silico_cnv in self.cnvs["in_silico"]:
+            for joined_cnv in self.joined_cnv:
+                if in_silico_cnv.is_overlap_acceptable(joined_cnv, threshold):
+                    joined_cnv.set_in_silico_cnv(in_silico_cnv)
+                    joined_cnv.origin = "in_silico"
+        real_cnvs = self.cnvs["real_cnv"]
+        if real_cnvs:
+            logger.info(
+                f"REAL CNVS: {real_cnvs}"
+            )
+            logger.info(
+                self.joined_cnv
+            )
+        for real_cnv in real_cnvs:
+            logger.info(f"real_cnv {real_cnv}-----------------------------------------------------\n\n\n\n\n\n")
+            
+            for joined_cnv in self.joined_cnv:
+                logger.info(
+                    f"Comparing CNVS: {joined_cnv} and {real_cnv}"
+                )
+                if real_cnv.is_overlap_acceptable(real_cnv, threshold):
+                    joined_cnv.set_in_silico_cnv(real_cnv)
+                    joined_cnv.origin = "real_cnv"
+                    logger.info(f"real cnv assigned to cnv: {joined_cnv}")
+
+
+    
     
     def check_sample_overlap_cnv(self):
         threshold = 15
         for in_silico_cnv in self.cnvs["in_silico"]:
+            # in_silico_cnv.is_overlap_acceptable()
+
+
+            for gatk_cnv in self.cnvs["gatk"]:
+                if in_silico_cnv.chr != gatk_cnv.chr:
+                    continue
+                
+                if in_silico_cnv.start > gatk_cnv.end or gatk_cnv.start > in_silico_cnv.end:
+                    continue
+
+                if in_silico_cnv.end < gatk_cnv.start or gatk_cnv.end < in_silico_cnv.start:
+                    continue
+                result = in_silico_cnv.calculate_overlap_percentage(gatk_cnv)
+                if result == 0:
+                    continue
+                in_silico_overlap, gatk_overlap = result
+                in_silico_cnv.algorithms_overlap["gatk"] = in_silico_overlap
+                gatk_cnv.overlap_percentage = gatk_overlap
+                if float(in_silico_overlap) > threshold and float(gatk_overlap) > threshold:
+                    in_silico_cnv.algorithms_detected.add("gatk")
+                    gatk_cnv.set_in_silico_cnv(in_silico_cnv)
+    
+
             for decon_cnv in self.cnvs["decon"]:
                 if in_silico_cnv.chr != decon_cnv.chr:
                     continue
@@ -241,8 +331,11 @@ class Sample():
 
                 if in_silico_cnv.end < decon_cnv.start or decon_cnv.end < in_silico_cnv.start:
                     continue
+                result = in_silico_cnv.calculate_overlap_percentage(decon_cnv)
+                if result == 0:
+                    continue
 
-                in_silico_overlap, decon_overlap = in_silico_cnv.calculate_overlap_percentage(decon_cnv)
+                in_silico_overlap, decon_overlap = result
                 in_silico_cnv.algorithms_overlap["decon"] = in_silico_overlap
                 decon_cnv.overlap_percentage = decon_overlap
                 if float(in_silico_overlap) > threshold and float(decon_overlap) > threshold:
@@ -258,8 +351,10 @@ class Sample():
 
                 if in_silico_cnv.end < grapes_cnv.start or grapes_cnv.end < in_silico_cnv.start:
                     continue
-
-                in_silico_overlap, grapes_overlap = in_silico_cnv.calculate_overlap_percentage(grapes_cnv)
+                result = in_silico_cnv.calculate_overlap_percentage(grapes_cnv)
+                if result == 0:
+                    continue
+                in_silico_overlap, grapes_overlap = result
                 in_silico_cnv.algorithms_overlap["grapes2"] = in_silico_overlap
                 grapes_cnv.overlap_percentage = grapes_overlap
                 if float(in_silico_overlap) > threshold and float(grapes_overlap) > threshold:
@@ -278,15 +373,17 @@ class Sample():
 
                 if in_silico_cnv.end < cnvkit_cnv.start or cnvkit_cnv.end < in_silico_cnv.start:
                     continue
-
-                in_silico_overlap, cnvkit_overlap = in_silico_cnv.calculate_overlap_percentage(cnvkit_cnv)
+                result = in_silico_cnv.calculate_overlap_percentage(cnvkit_cnv)
+                if result == 0:
+                    continue
+                in_silico_overlap, cnvkit_overlap = result
                 in_silico_cnv.algorithms_overlap["cnvkit"] = in_silico_overlap
                 cnvkit_cnv.overlap_percentage = cnvkit_overlap
                 if float(in_silico_overlap) > threshold and float(cnvkit_overlap) > threshold:
                     in_silico_cnv.algorithms_detected.add("cnvkit")
                     cnvkit_cnv.set_in_silico_cnv(in_silico_cnv)
-    
-    
+
+
     # def plot_overlap_histograms(self, in_silico_overlaps, algorithm_overlaps, algorithm_name="Algorithm", ref_conf=None):
 
     #     plt.figure(figsize=(10, 6))

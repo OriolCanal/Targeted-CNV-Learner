@@ -2,6 +2,7 @@
 /bam_vol/RB36960.rmdup.simulated.bam
 /bam_vol/RB36966.rmdup.simulated.bam
 /bam_vol/RB36965.rmdup.simulated.bam
+/bam_vol/RB36964.rmdup.simulated.bam
 /bam_vol/RB36972.rmdup.simulated.bam
 /bam_vol/RB36973.rmdup.simulated.bam
 /bam_vol/RB36971.rmdup.simulated.bam
