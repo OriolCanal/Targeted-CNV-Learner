@@ -90,7 +90,7 @@ The following optional parameters can be provided with the create_model command:
 
 * --z_score_threshold: Specifies the Z-score threshold to identify outliers in quality control. A higher value relaxes quality control strictness (default: 2).
 
-*--bed: Path to the .bed file corresponding to the gene panel for the analysis.
+* --bed: Path to the .bed file corresponding to the gene panel for the analysis.
 
 ### Step 2: Model Analysis (Model.ipynb)
 
