@@ -22,6 +22,9 @@ tained high sensitivity, effectively detecting CNVs while minimizing the need fo
 sary orthogonal validations when validated. These findings were further confirmed through
 real CNV data, where Targeted-CNV-Learner matched the high sensitivity of GRAPES.
 
+A comprehensive explanation on how Targeted-CNV-Learner works can be found in [the following pdf](/template/main.pdf)
+
+In the following figure, an overview of the methodology used by Targeted-CNV-Learner can be observed:
 ![Methodology of Targeted-CNV-Learner](template/imatges/master-thesis-workflow2.png)
 
 
