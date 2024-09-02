@@ -23,3 +23,6 @@ cohort_bams/
 bams_with_cnvs/
 analysis_bams/
 results_pre_insilico/
+RUN20231110/
+good_files/
+validated_files/

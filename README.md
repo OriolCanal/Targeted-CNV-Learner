@@ -1,55 +1,127 @@
-# CNV Detection on Targeted Sequencing
-Descripció:
-The master's thesis will be conducted at the Unitat de Diagnòstic Molecular i Medicina Personalitzada (UDMMP) at Hospital Josep Trueta. Our team specializes in genetic diagnostics for various diseases with a significant genetic component, placing particular emphasis on cardiovascular diseases as we are recognized as a leading center for cardiovascular disease diagnosis in Catalunya.
+# Targeted-CNV-Learner
 
- 
+Here, it is introduced Targeted-CNV-Learner, an ad-
+vanced machine learning framework designed to enhance the detection of Copy Number
+Variations (CNVs) in targeted gene panels. CNVs play a critical role in various genetic disor-
+ders, and their precise identification is vital for clinical diagnostics. However, current CNV
+detection methods, especially those used in targeted sequencing, often suffer from high
+false positive rates and limited precision, underscoring the need for more robust solutions.
+The primary objective of this work was to address these challenges by proposing a novel
+methodology that integrates the outputs of multiple CNV detection algorithms. Targeted-
+CNV-Learner leverages the strengths of three widely used algorithms—GATK gCNV, GRAPES,
+and DECoN—alongside genomic features to accurately differentiate between true CNVs and
+artifacts. 
 
-The focus of the master's thesis will be on developing a model to enhance the identification of copy number variants (CNVs). CNVs are commonly defined as a subtype of Structural Variant (SV) larger than 50 bp that involves a net change in the copy number of specific DNA regions. CNVs include duplications (where an additional copy of the DNA segment is present), deletions (where a segment is missing), insertions (where a segment is inserted from another part of the genome), and other forms of complex rearrangements.
+A comprehensive analytical pipeline was developed to automate the processes of sample
+analysis, data labeling, and model training. This pipeline facilitated the systematic evalu-
+ation and benchmarking of Targeted-CNV-Learner against individual CNV detection algo-
+rithms. The results showed that Targeted-CNV-Learner outperformed the standalone meth-
+ods, achieving the highest accuracy (95.5%) on the test set and a substantial reduction in
+false positives compared to DECoN, GRAPES, and GATK gCNV. Moreover, the model main-
+tained high sensitivity, effectively detecting CNVs while minimizing the need for unneces-
+sary orthogonal validations when validated. These findings were further confirmed through
+real CNV data, where Targeted-CNV-Learner matched the high sensitivity of GRAPES.
 
- 
+![Methodology of Targeted-CNV-Learner](template/imatges/master-thesis-workflow2.png)
 
-CNVs have been reported in various genes associated with inherited cardiomyopathies, playing a pathogenic role in approximately 2% of patients [1]. Therefore, accurate CNV detection is a crucial aspect of genetic analysis pipelines.
 
- 
+## Requirements
+Targeted-CNV-Learner requires at least 200 samples to build a reliable model. Therefore, it's crucial to have at least 200 samples (bam files) analyzed using the same gene panel to create a sufficiently large dataset for training the machine learning model.
+## Installation
 
-Targeted sequencing applications, including exome and gene panels, have been widely established for clinical genetic diagnosis due to its reduced costs of sequencing and data storage compared to whole genome sequencing. CNV detection on targeted sequencing data imposes additional difficulties compared with genome sequencing for two main reasons. First, the sparseness of DNA capturing approaches hampers the use of breakpoint signals. And second, a highly variable depth of coverage caused by sampling, GC (guanine cytosine)-content and bait capturing efficiency.
+### Step 1: Clone the Repository
+First, clone the repository:
+```bash
+git clone https://github.com/OriolCanal/Targeted-CNV-Learner.git
+cd Targeted-CNV-Learner
+```
 
- 
+### Step 2: Create a virtual environment: 
+Next, create and activate a Python virtual environment:
 
-While many algorithms have been developed for CNV detection based on targeted sequencing data in genetic diagnostics [1], most excel in reliably detecting large CNVs (on the order of megabases). However, they often exhibit poor performance when dealing with small CNVs that affect only one or a few exons, which are typically implicated in various genetic diseases.
 
- 
+```
+python3 -m venv venv
+source venv/bin/activate
+```
 
-Recent studies have shown that the integration of multiple CNV detection algorithms can significantly improve the identification of high-confidence CNVs [2]. Therefore, my proposal is to develop an artificial intelligence model specifically trained on samples from our lab. This model will leverage genetic data commonly used for CNV detection, including predictions and scores from various software (tools such as DECON[3], GATK-gCNV [4]), as well as parameters that can influence the quality of the call as quality parameters of the sample and mappability and GC content of the CNV region.
+### Step 3: Install dependencies:
+Install the necessary dependencies listed in the requirements.txt file:
 
- 
 
-The primary goal of this model is to outperform individual software predictions and provide more accurate CNV predictions. By doing so, we aim to integrate this model into clinical practice to reduce the need for manual inspection of CNVs and their subsequent orthogonal validations using other techniques like Multiplex Ligation-dependent Probe Amplification (MLPA), which can be costly both economically and in terms of personnel.
+```
+pip install -r requirements.txt
+```
 
- 
+## Input structure preparation
 
-The scope of the project include the following task:
+### Step 4: Organize BAM Files by Run
+Create a directory structure under the /bams/ directory, where each run of samples is stored in its own subdirectory.
 
-Determination of the State-of-the-Art CNV algorithms: research and identify the most advanced and effective algorithms for CNV detection.
+For example, if you have samples RB2222, RB2223, RB2224, and RB2225 from run RUN20230505, follow these steps:
 
-Obtaining validated CNVs: Gathering CNVs that have been validated orthogonally by our group to establish a ground truth for evaluating the performance of the model.
+1. In the /bams/ directory, create a subdirectory named RUN20230505.
+2. Place the corresponding BAM files for samples RB2222, RB2223, RB2224, and RB2225 in /bams/RUN20230505/.
 
-Introduction of in-silico CNVs: Generating synthetic CNVs into samples allow to create a diverse training dataset that is essential for training a robust model.
 
-Designing the machine learning pipeline: Training the model incrementally with in-silico dataset to build a robust model for CNV detection.
+### Step 5: Provide a list of previously identified CNVs
+If any CNVs have already been identified and validated using an orthogonal technique, include them in a CSV file named real_CNV.csv. The file should follow this format:
 
-Validation of the discovered CNVs to evaluate the performance of the model
+LAB_ID,GENE,EXON,TYPE,chr,start,end<br>
+RB19783,LDB3,ALL,DUP,10,81840174,88459131<br>
+RB20322,MYH6,26-28,DUP,14,23861760,23888828<br>
+RB20616,CTNNA3,11,DEL,10,68381352,88459131<br>
 
- 
 
- 
+## Run Targeted-CNV-Learner
 
-Mates, J., Mademont-Soler, I., Del Olmo, B., Ferrer-Costa, C., Coll, M., Pérez-Serra, A., Picó, F., Allegue, C., Fernandez-Falgueras, A., Álvarez, P., Yotti, R., Espinosa, M. A., Sarquella-Brugada, G., Cesar, S., Carro, E., Brugada, J., Arbelo, E., Garcia-Pavia, P., Borregan, M., Tizzano, E., … Brugada, R. (2018). Role of copy number variants in sudden cardiac death and related diseases: genetic analysis and translation into clinical practice. European journal of human genetics : EJHG, 26(7), 1014–1025. https://doi.org/10.1038/s41431-018-0119-1
+Targeted-CNV-Learner can be executed in three main steps, allowing users to create models, analyze results, and predict CNVs on new datasets. Each step involves specific commands and options, which are described below.
 
-Moreno-Cabrera, J.M., del Valle, J., Castellanos, E. et al. Evaluation of CNV detection tools for NGS panel data in genetic diagnostics. Eur J Hum Genet 28, 1645–1655 (2020). https://doi.org/10.1038/s41431-020-0675-z
+### Step1: Model creation ('create_model')
+The create_model step automates all processes leading to the creation of CNV detection models using Random Forest and XGBoost algorithms. This step is computationally intensive, as it involves:
 
-Pounraja, V. K., Jayakar, G., Jensen, M., Kelkar, N., & Girirajan, S. (2019). A machine-learning approach for accurate detection of copy number variants from exome sequencing. Genome research, 29(7), 1134–1143. https://doi.org/10.1101/gr.245928.118
+* Quality Control: Filtering samples based on a user-defined threshold.
+* Simulating CNVs: Generating BAM files with in silico CNVs.
+* Running CNV Detection: Applying CNV detection algorithms to the samples.
+* Overlapping Analysis: Performing analysis on overlapping CNVs.
+* Dataset Preparation: Extending the dataset to enable model creation.
 
-Molyneaux, B. J., Goff, L. A., Brettler, A. C., Chen, H. H., Hrvatin, S., Rinn, J. L., & Arlotta, P. (2015). DeCoN: genome-wide analysis of in vivo transcriptional dynamics during pyramidal neuron fate selection in neocortex. Neuron, 85(2), 275–288. https://doi.org/10.1016/j.neuron.2014.12.024
+The following optional parameters can be provided with the create_model command:
 
-Babadi, M., Fu, J.M., Lee, S.K. et al. GATK-gCNV enables the discovery of rare copy number variants from exome sequencing data. Nat Genet 55, 1589–1597 (2023). https://doi.org/10.1038/s41588-023-01449-0
+* --z_score_threshold: Specifies the Z-score threshold to identify outliers in quality control. A higher value relaxes quality control strictness (default: 2).
+
+*--bed: Path to the .bed file corresponding to the gene panel for the analysis.
+
+### Step 2: Model Analysis (Model.ipynb)
+
+After model creation, results can be explored and analyzed using the Model.ipynb notebook. In this step, you can:
+
+* Evaluate Model Metrics: Inspect the performance metrics of different models (e.g., precision, recall, F1-score).
+
+* Feature Analysis: Analyze the influence of various features on the model's predictions.
+
+* Model Selection: Select the best-performing model and adjust decision thresholds to suit your specific requirements.
+
+### Step 3: Prediction ('predict')
+
+The predict command is used to apply the trained model to a new dataset. This can involve predicting CNVs on a novel dataset or evaluating the model against a known dataset with real CNVs. The following parameters must be specified:
+
+* --model_path: Path to the trained model file.
+* --bed_file: Path to the .bed file corresponding to the gene panel.
+* --z_score_threshold: Z-score threshold for quality control during prediction (default: 2).
+* --run_path: Path to the folder containing the BAM files for the samples to be analyzed.
+
+
+## Example commands:
+
+1. Create model: 
+```bash
+python targeted_cnv_learner.py create_model --z_score_threshold 2.5 --bed /path/to/bedfile.bed
+```
+2. Analyze Model: Open Model.ipynb in Jupyter Notebook and run the cells in order to proceed with the analysis.
+
+3. Predict CNVs:
+
+```bash
+python targeted_cnv_learner.py predict --model_path /path/to/model.pkl --bed_file /path/to/bedfile.bed --z_score_threshold 2 --run_path /path/to/run_folder/
+```
