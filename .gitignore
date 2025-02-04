@@ -24,5 +24,8 @@ bams_with_cnvs/
 analysis_bams/
 results_pre_insilico/
 RUN20231110/
+mongo_db/
 good_files/
 validated_files/
+
+mongo_db/mongo
