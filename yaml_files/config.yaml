@@ -6,5 +6,5 @@ reference_yaml_file : "yaml_files/reference_resources.yaml"
 mock_vcf : "vcf_files/mock_vcf/RB36565.gatk.vcf"
 isoforms_to_annotate: "isoforms_included_in_db.txt"
 bam_dir: "bams_147" # directory where bams and bais are stored
-bed_file : "bed/suddxl.v3.147.ROI.analysis.bed"
+bed_file : "/home/ocanal/Desktop/CNV_detection_on_targeted_sequencing/bed/AGILENT_GLOBAL/S3434022_Covered.analysis.bed"
 detected_cnvs_file: "real_cnv_147_sudd.csv"

@@ -46,7 +46,7 @@ time_ordered_runs = sorted(all_runs, key=get_timestamp, reverse=True)
 
 run_ids = list()
 for run in time_ordered_runs:
-    if run.panel == "SUDD_147":
+    if run.panel == "AGILENT_GLOBAL":
         run_ids.append(run.run_id)
         logger.info(f"{run.run_id} will be analysed")
     if len(run_ids) == 16:

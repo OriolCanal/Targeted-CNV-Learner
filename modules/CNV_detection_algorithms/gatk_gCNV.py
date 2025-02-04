@@ -18,7 +18,7 @@ class Gatk_gCNV(CNV_Algorithm):
             os.mkdir(self.gatk_folder)
         self.gatk_read_counts_dirname = "Read_counts"
         self.gatk_read_counts_folder = os.path.join(self.gatk_folder, self.gatk_read_counts_dirname)
-        self.mappability_folder = os.path.join(self.gatk_folder, "mappability_track")
+        self.mappability_folder = os.path.join(Bed.dir, "mappability_track")
         self.mappability_track_path = os.path.join(self.mappability_folder, "k50.umap.bed")
         self.gatk_volume = "/gatk_vol"
         self.read_counts_volume = "/read_counts"
@@ -26,6 +26,8 @@ class Gatk_gCNV(CNV_Algorithm):
         self.contig_ploidy = os.path.join(self.gatk_folder, self.contig_ploidy_filename)
         self.scatter_dirname = "scatter"
         self.scatter_path = os.path.join(Bed.dir, self.scatter_dirname)
+        if not os.path.exists(self.scatter_path):
+            os.mkdir(self.scatter_path)
         self.gatk_results_dir = os.path.join(self.results_dir, "GATK")
         if not os.path.exists(self.gatk_results_dir):
             os.mkdir(self.gatk_results_dir)
@@ -133,9 +135,11 @@ class Gatk_gCNV(CNV_Algorithm):
         index_map_track_path = f"{self.mappability_track_path}.idx"
         if os.path.isfile(index_map_track_path) and not self.force_run:
             return(index_map_track_path)
+        
+        map_folder = os.path.dirname(self.Bed.dir)
         cmd = [
             self.docker_path, "run",
-            "-v", f"{self.Bed.dir}:{self.Bed.volume}",
+            "-v", f"{map_folder}:{self.Bed.volume}",
             f"{self.gatk_image}:{self.gatk_version}",
             "gatk", "IndexFeatureFile",
             "-I", f"{self.Bed.volume}/{mappability_folder}/{mappability_filename}"
@@ -172,18 +176,20 @@ class Gatk_gCNV(CNV_Algorithm):
             return(gc_annotated_bed_path)
         
         fasta_volume = "/fasta_dir"
+        map_folder = os.path.dirname(self.Bed.dir)
 
         cmd = [
             self.docker_path, "run",
             "-v", f"{fasta_dir}:{fasta_volume}",
             "-v", f"{self.Bed.dir}:{self.Bed.volume}",
             "-v", f"{self.gatk_folder}:{self.gatk_volume}",
+            "-v", f"{map_folder}:/map_folder",
             f"{self.gatk_image}:{self.gatk_version}",
             "gatk", "AnnotateIntervals",
             "-L", f"{self.Bed.volume}/{self.Bed.preprocessed_intervals_filename}",
             "-R", f"{fasta_volume}/{fasta_filename}",
             "-imr", "OVERLAPPING_ONLY",
-            "--mappability-track", f"{self.Bed.volume}/{mappability_dirname}/{mappability_filename}",
+            "--mappability-track", f"/map_folder/{mappability_dirname}/{mappability_filename}",
             "-O", f"{self.Bed.volume}/{gc_annotated_bed_filename}"
         ]
     
@@ -252,6 +258,7 @@ class Gatk_gCNV(CNV_Algorithm):
         return(filtered_intervals_path)
   
     def run_interval_list_tools(self):
+
         cmd = [
             self.docker_path, "run",
             "-v", f"{self.Bed.dir}:{self.Bed.volume}",
@@ -290,9 +297,10 @@ class Cohort_Gatk_gCNV(Gatk_gCNV):
         self.ploidy_model = os.path.join(self.model_dir, f"{self.ploidy_prefix}-model")
         if os.path.exists(self.ploidy_model) and not self.force_run:
             logger.info(
-                f"DetermineGermlineContigPloidy already run in cohort mode for cohort samples"
+                f"DetermineGermlineContigPloidy already run in cohort mode for cohort samples: {self.ploidy_model}"
             )
             return(True)
+
         
         
         input_read_files = self.get_input_read_count_files(self.cohort_samples)

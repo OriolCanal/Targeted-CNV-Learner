@@ -2,6 +2,7 @@ import os
 import subprocess
 import gzip
 from modules.log import logger
+from modules.run_class import Sample
 import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -156,9 +157,11 @@ class Mosdepth():
         self.mean_gene_coverage = dict()
         sample_length = 0
         sample_coverage = 0
+        # print(self.bed_regions_path)
         with gzip.open(self.bed_regions_path, "rb") as f:
             for line in f:
                 line = line.strip().decode()
+                # print(line)
                 if line.startswith("#"):
                     # removing the #
                     line = line[1:]
@@ -177,6 +180,7 @@ class Mosdepth():
                 # Split by comma and space to separate key-value pairs
                 pairs = info.split(", ")
 
+                # print(pairs, "pairs")
                 # Split each pair by colon to separate key and value, and strip spaces
                 info_dict = {pair.split(": ")[0].strip("'"): pair.split(": ")[1].strip("'") for pair in pairs}
 
@@ -453,7 +457,7 @@ class Joined_Mosdepth_Df(Mosdepth_df):
         self.joined_df_pca['PC1_zscore'] = (self.joined_df_pca['PC1'] - self.joined_df_pca['PC1'].mean()) / self.joined_df_pca['PC1'].std()
         self.joined_df_pca['PC2_zscore'] = (self.joined_df_pca['PC2'] - self.joined_df_pca['PC2'].mean()) / self.joined_df_pca['PC2'].std()
         self.outliers = self.joined_df_pca[(np.abs(self.joined_df_pca['PC1_zscore']) > z_score_threshold) | (np.abs(self.joined_df_pca['PC2_zscore']) > z_score_threshold)]
-        
+        print(self.outliers)
         # Add a column to flag outliers
         self.joined_df_pca['is_outlier'] = np.where((np.abs(self.joined_df_pca['PC1_zscore']) > z_score_threshold) | (np.abs(self.joined_df_pca['PC2_zscore']) > z_score_threshold), 'Outlier', 'Not Outlier')
 
@@ -475,6 +479,9 @@ class Joined_Mosdepth_Df(Mosdepth_df):
         )
         pca_plot_path2 = pca_plot_path.replace(".html", ".png")
         fig.write_image(pca_plot_path2)
+        for sample_id in self.outliers["sample_id"]:
+            Sample_outlier = Sample.sample_id_sample_obj[sample_id]
+            Sample_outlier.is_outlier = True
         # Save or display the plot
         fig.write_html(pca_plot_path)
         

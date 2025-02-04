@@ -16,6 +16,14 @@ class Analysis_Run():
         self.samples_147 = list()
         self.is_cohort = is_cohort
     
+    def __str__(self):
+        # This method will return a string representation of the object
+        return f"Analysis_Run: {self.run_id}"
+    
+    def __repr__(self):
+        # For debugging or detailed inspection, provide a more detailed representation
+        return f"Analysis_Run(run_path='{self.run_path}', run_id='{self.run_id}', is_cohort={self.is_cohort})"
+
     def put_bams_in_cohort_dir(self, ref_conf):
         """
         Create a cohort directory where there will be stored all the cohort bam files
@@ -71,6 +79,10 @@ class Analysis_Run():
             out_path = os.path.join(analysis_dir, sample.bam.filename)
             if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
                 continue
+
+            # with open(out_path, "w") as f:
+            #     f.write("a")
+            
             cmd = [
                 "cp", sample.bam.path, out_path
             ]
@@ -174,6 +186,7 @@ class Analysis_Run():
 
     def get_Bams_and_Samples(self):
         bams_bais = os.listdir(self.run_path)
+        logger.info(self.run_path)
         bams = [bam for bam in bams_bais if bam.endswith(".bam")]
 
         for bam in bams:
@@ -423,17 +436,17 @@ class Sample():
             )
         self.gatk_vcf_filename = os.path.basename(gatk_vcf_path)
 
-# class Analysis_Sample():
-#     compendi_bai_path = "http://172.16.83.24:8001/download_sample_bai/"
-#     compendi_bam_path = "http://172.16.83.24:8001/download_sample_bam/"
+class Analysis_Sample():
+    compendi_bai_path = "http://172.16.83.24:8001/download_sample_bai/"
+    compendi_bam_path = "http://172.16.83.24:8001/download_sample_bam/"
 
-#     def __init__(self, Bam, sample_id=None, run_id=None):
-#         self.run_id = run_id
-#         self.sample_id = sample_id
-#         self.downloaded_bam = False
-#         self.bam = Bam # Bam class containing info about bam files
-#         self.assigned_cluster = None
-#         self.is_outlier = False
+    def __init__(self, Bam, sample_id=None, run_id=None):
+        self.run_id = run_id
+        self.sample_id = sample_id
+        self.downloaded_bam = False
+        self.bam = Bam # Bam class containing info about bam files
+        self.assigned_cluster = None
+        self.is_outlier = False
 
 
 # class Analysis_Sample():

@@ -48,6 +48,7 @@ class CNV_Generator():
             "-b", self.Bed_obj.roi_bed,
             "--mode", "multiple",
         ]
+        print(cmd)
         str_cmd = " ".join(cmd)
         logger.info(
             f"Creating config for multiple exons CNVs: {config_output_path}\n{str_cmd}"

@@ -10,8 +10,8 @@ class Bed():
             preprocessed_intervals_path="",
             filtered_intervals_path="",
             grapes_bed_path="",
-            sorted_merged_bed="suddxl.v3.147.ROI.sorted.merged.bed",
-            roi_bed = "suddxl.v3.147.ROI.bed"
+            sorted_merged_bed="S3434022_Covered.analysis.bed",
+            roi_bed = "S3434022_Covered.analysis.bed"
         ):
         self.path = bed_path
         self.filename = os.path.basename(self.path)

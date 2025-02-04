@@ -58,7 +58,7 @@ class Decon(CNV_Algorithm):
             f"{self.decon_image}:{self.decon_version}",
             "ReadInBams.R", 
             "--bams", f"/decon_folder/{self.input_filename}",
-            "--bed", f"{self.Bed.volume}/{self.Bed.sorted_merged_bed_filename}",
+            "--bed", f"{self.Bed.volume}/{self.Bed.grapes_bed_filename}",
             "--fasta", f"/fasta_dir/{fasta_filename}",
             "--out", f"/decon_folder/{self.run_id}"
         ]
@@ -88,6 +88,7 @@ class Decon(CNV_Algorithm):
 
     def run_make_CNVcalls(self):
         output_path = os.path.join(self.decon_results_dir, f"decon_{self.run_id}_cnvs.RData")
+        print(output_path, "output path -----------------------------------------------------------------------------")
         if os.path.exists(output_path):
             logger.info(
                 f"Output of Decon makeCNVcalls for runID: {self.run_id} already exists: {output_path}"
@@ -101,9 +102,14 @@ class Decon(CNV_Algorithm):
             "makeCNVcalls.R",
             "--Rdata", f"/decon_folder/{self.run_id}.RData",
             "--transprob", "0.01",
-            "--out", f"/decon_results/decon_{self.run_id}_cnvs"
+            "--out", f"/decon_results/decon_{self.run_id}_cnvs",
+            "--plotFolder", "None"
         ]
-
+        cmd_str = " ".join(cmd)
+        logger.info(
+            f"Running Decon makeCNVcalls:\n{cmd_str}"
+        )
+        #subprocess.run(cmd, encoding="utf-8", capture_output=True)
         self.run_cmd(cmd, "DECON makeCNVcalls")
     
 
@@ -132,6 +138,7 @@ class Decon(CNV_Algorithm):
 
                     cnv = Detected_CNV(start, end, chr, cnv_type, sample, n_exons, gene, algorithm="DECON", qual=bayes_factor)
                     if sample_id_sample_obj:
+                        print(sample_id_sample_obj)
                         # print(Sample_class.sample_id_sample_obj)
                         sample_obj = sample_id_sample_obj[sample]
                         sample_obj.cnvs["decon"].append(cnv)

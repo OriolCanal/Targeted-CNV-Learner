@@ -1,0 +1,4 @@
+chr,numb_exons,decon,gatk,grapes,gc_content,mappability,cnv_length,decon_qual,gatk_qual,grapes_qual,sample_correlation,is_autosomal,genes_encoded,encoded_type,Actual,Predicted
+10,2,1,1,0,40.93239191411161,0.5312498750000001,10338,33.1,241.98,,0.9125106337681907,1,1248,0,0,1
+10,1,1,0,1,33.9622641509434,1.0,211,6.73,,0.578,0.85413769035665,1,937,1,1,0
+3,1,1,0,1,59.036144578313255,0.8333333333333334,248,9.1,,0.573,0.8486572613619223,1,1012,1,1,0

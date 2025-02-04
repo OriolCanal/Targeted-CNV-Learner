@@ -317,7 +317,7 @@ class Results_Df():
         misclassified_df['Actual'] = y_test[misclassified_mask]
         misclassified_df['Predicted'] = y_pred[misclassified_mask]
 
-        misclassified_output_csv = os.path.join(self.main_dir, f"misclassified_instances_{model_name}.csv")
+        misclassified_output_csv = os.path.join(self.ref_conf.main_dir, f"misclassified_instances_{model_name}.csv")
         misclassified_df.to_csv(misclassified_output_csv, index=False)
         logger.info(f"Misclassified instances for {model_name} saved to: {misclassified_output_csv}")
 
