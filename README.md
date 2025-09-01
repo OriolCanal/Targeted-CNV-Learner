@@ -1,7 +1,6 @@
 # Targeted-CNV-Learner
 
-Here, it is introduced Targeted-CNV-Learner, an ad-
-vanced machine learning framework designed to enhance the detection of Copy Number
+Here, it is introduced Targeted-CNV-Learner, an advanced machine learning framework designed to enhance the detection of Copy Number
 Variations (CNVs) in targeted gene panels. CNVs play a critical role in various genetic disor-
 ders, and their precise identification is vital for clinical diagnostics. However, current CNV
 detection methods, especially those used in targeted sequencing, often suffer from high
