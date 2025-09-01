@@ -1,8 +1,7 @@
 # Targeted-CNV-Learner
 
 Here, it is introduced Targeted-CNV-Learner, an advanced machine learning framework designed to enhance the detection of Copy Number
-Variations (CNVs) in targeted gene panels. CNVs play a critical role in various genetic disor-
-ders, and their precise identification is vital for clinical diagnostics. However, current CNV
+Variations (CNVs) in targeted gene panels. CNVs play a critical role in various genetic disorders, and their precise identification is vital for clinical diagnostics. However, current CNV
 detection methods, especially those used in targeted sequencing, often suffer from high
 false positive rates and limited precision, underscoring the need for more robust solutions.
 The primary objective of this work was to address these challenges by proposing a novel
@@ -12,13 +11,9 @@ and DECoN—alongside genomic features to accurately differentiate between true 
 artifacts. 
 
 A comprehensive analytical pipeline was developed to automate the processes of sample
-analysis, data labeling, and model training. This pipeline facilitated the systematic evalu-
-ation and benchmarking of Targeted-CNV-Learner against individual CNV detection algo-
-rithms. The results showed that Targeted-CNV-Learner outperformed the standalone meth-
-ods, achieving the highest accuracy (95.5%) on the test set and a substantial reduction in
-false positives compared to DECoN, GRAPES, and GATK gCNV. Moreover, the model main-
-tained high sensitivity, effectively detecting CNVs while minimizing the need for unneces-
-sary orthogonal validations when validated. These findings were further confirmed through
+analysis, data labeling, and model training. This pipeline facilitated the systematic evaluation and benchmarking of Targeted-CNV-Learner against individual CNV detection algo-
+rithms. The results showed that Targeted-CNV-Learner outperformed the standalone methods, achieving the highest accuracy (95.5%) on the test set and a substantial reduction in
+false positives compared to DECoN, GRAPES, and GATK gCNV. Moreover, the model maintained high sensitivity, effectively detecting CNVs while minimizing the need for unnecessary orthogonal validations when validated. These findings were further confirmed through
 real CNV data, where Targeted-CNV-Learner matched the high sensitivity of GRAPES.
 
 A comprehensive explanation on how Targeted-CNV-Learner works can be found in [the following pdf](/template/main.pdf)
