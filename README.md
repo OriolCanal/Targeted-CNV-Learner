@@ -11,8 +11,7 @@ and DECoN—alongside genomic features to accurately differentiate between true 
 artifacts. 
 
 A comprehensive analytical pipeline was developed to automate the processes of sample
-analysis, data labeling, and model training. This pipeline facilitated the systematic evaluation and benchmarking of Targeted-CNV-Learner against individual CNV detection algo-
-rithms. The results showed that Targeted-CNV-Learner outperformed the standalone methods, achieving the highest accuracy (95.5%) on the test set and a substantial reduction in
+analysis, data labeling, and model training. This pipeline facilitated the systematic evaluation and benchmarking of Targeted-CNV-Learner against individual CNV detection algorithms. The results showed that Targeted-CNV-Learner outperformed the standalone methods, achieving the highest accuracy (95.5%) on the test set and a substantial reduction in
 false positives compared to DECoN, GRAPES, and GATK gCNV. Moreover, the model maintained high sensitivity, effectively detecting CNVs while minimizing the need for unnecessary orthogonal validations when validated. These findings were further confirmed through
 real CNV data, where Targeted-CNV-Learner matched the high sensitivity of GRAPES.
 
